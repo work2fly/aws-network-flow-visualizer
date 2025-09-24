@@ -30,21 +30,58 @@ Built with:
 
 ## Development Status
 
-This project is currently in the specification and design phase. See the [project documentation](./docs/) for detailed requirements, design, and implementation plans.
+The project structure and development environment have been set up. The application is ready for feature implementation.
 
 ## Documentation
 
-- [Requirements](./docs/requirements.md) - Detailed feature requirements and acceptance criteria
-- [Design](./docs/design.md) - Technical architecture and component design
-- [Implementation Plan](./docs/tasks.md) - Step-by-step development tasks
+- [Requirements](./.kiro/specs/aws-network-flow-visualizer/requirements.md) - Detailed feature requirements and acceptance criteria
+- [Design](./.kiro/specs/aws-network-flow-visualizer/design.md) - Technical architecture and component design
+- [Implementation Plan](./.kiro/specs/aws-network-flow-visualizer/tasks.md) - Step-by-step development tasks
 
 ## Getting Started
 
-This project is not yet implemented. To contribute to development:
+### Prerequisites
+- Node.js 18+
+- npm or yarn
 
-1. Review the [requirements](./docs/requirements.md) and [design](./docs/design.md) documents
-2. Check the [implementation plan](./docs/tasks.md) for current development tasks
-3. Follow the tasks sequentially as each builds on the previous ones
+### Development Setup
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Start development server:
+   ```bash
+   npm run dev
+   ```
+
+### Available Scripts
+
+- `npm run dev` - Start development server with hot reload
+- `npm run build` - Build production version
+- `npm run package` - Package application for current platform
+- `npm run package:linux` - Package for Linux
+- `npm run package:mac` - Package for macOS  
+- `npm run package:win` - Package for Windows
+- `npm run test` - Run test suite
+- `npm run lint` - Run ESLint
+- `npm run format` - Format code with Prettier
+
+### Project Structure
+
+```
+src/
+├── main/           # Electron main process
+│   ├── main.ts     # Main entry point
+│   └── preload.ts  # Preload script for secure IPC
+├── renderer/       # React frontend
+│   ├── components/ # React components (to be added)
+│   ├── store/      # Redux store
+│   └── index.tsx   # Renderer entry point
+└── shared/         # Shared types and utilities
+    └── types.ts    # TypeScript type definitions
+```
 
 ## Use Cases
 

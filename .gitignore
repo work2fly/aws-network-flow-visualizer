@@ -63,4 +63,15 @@ temp/
 
 # Package manager lock files (include these)
 # package-lock.json
-# yarn.lock
+# yarn.lock# Ad
+ditional Electron build artifacts
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+
+# Test coverage
+coverage/
+*.lcov
+
+# Webpack cache
+.cache/
