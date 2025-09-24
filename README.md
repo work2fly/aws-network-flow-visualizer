@@ -97,4 +97,22 @@ src/
 
 ## Contributing
 
-[Contributing guidelines to be added]
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our branching strategy, code of conduct, and the process for submitting pull requests.
+
+### Quick Start for Contributors
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/task-description`
+3. Make your changes following the coding standards
+4. Run tests: `npm test`
+5. Run linting: `npm run lint`
+6. Commit using conventional commits: `feat: add new feature`
+7. Push to your fork and create a Pull Request
+
+### Branch Protection
+
+The `main` branch is protected and requires:
+- Pull request reviews
+- All status checks to pass
+- Branches to be up to date before merging
+- No direct pushes to main
