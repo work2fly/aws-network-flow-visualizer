@@ -58,8 +58,11 @@ aws-credentials.json
 tmp/
 temp/
 
-# Kiro IDE files (keep local)
-.kiro/
+# Kiro IDE files - include project files, exclude user settings
+.kiro/settings/
+.kiro/cache/
+.kiro/logs/
+# Keep .kiro/steering/ and .kiro/specs/ in git for team consistency
 
 # Package manager lock files (include these)
 # package-lock.json
