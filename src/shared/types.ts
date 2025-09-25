@@ -473,3 +473,200 @@ export interface TGWFlowLogFilters extends VPCFlowLogFilters {
   attachmentIds?: string[];
   resourceTypes?: string[];
 }
+
+// Enhanced filtering types for real-time filtering system
+export interface FlowFilters {
+  // IP filtering
+  sourceIPs?: string[];
+  destinationIPs?: string[];
+  ipRanges?: IPRangeFilter[];
+  
+  // Port filtering
+  sourcePorts?: PortFilter[];
+  destinationPorts?: PortFilter[];
+  
+  // Protocol filtering
+  protocols?: string[];
+  
+  // Time filtering
+  timeRange?: TimeRangeFilter;
+  
+  // Action filtering
+  actions?: ('ACCEPT' | 'REJECT')[];
+  
+  // AWS resource filtering
+  vpcIds?: string[];
+  subnetIds?: string[];
+  instanceIds?: string[];
+  accountIds?: string[];
+  regions?: string[];
+  
+  // Traffic volume filtering
+  minBytes?: number;
+  maxBytes?: number;
+  minPackets?: number;
+  maxPackets?: number;
+  
+  // Advanced filtering
+  hasAnomalies?: boolean;
+  isActive?: boolean;
+  connectionType?: string[];
+}
+
+export interface IPRangeFilter {
+  cidr: string;
+  include: boolean; // true for include, false for exclude
+  label?: string;
+}
+
+export interface PortFilter {
+  port?: number;
+  portRange?: { start: number; end: number };
+  protocol?: string;
+  include: boolean;
+  label?: string;
+}
+
+export interface TimeRangeFilter {
+  start: Date;
+  end: Date;
+  preset?: TimeRangePreset;
+  timezone?: string;
+}
+
+export type TimeRangePreset = 
+  | 'last-hour'
+  | 'last-4-hours'
+  | 'last-24-hours'
+  | 'last-7-days'
+  | 'last-30-days'
+  | 'custom';
+
+// Filter state management
+export interface FilterState {
+  filters: FlowFilters;
+  savedFilters: SavedFilter[];
+  activeFilterCount: number;
+  lastApplied: Date;
+}
+
+export interface SavedFilter {
+  id: string;
+  name: string;
+  description?: string;
+  filters: FlowFilters;
+  createdAt: Date;
+  lastUsed?: Date;
+  isDefault?: boolean;
+}
+
+// Search functionality types
+export interface SearchQuery {
+  query: string;
+  type: SearchType;
+  caseSensitive?: boolean;
+  exactMatch?: boolean;
+}
+
+export type SearchType = 'ip' | 'port' | 'protocol' | 'node' | 'all';
+
+export interface SearchResult {
+  type: 'node' | 'edge' | 'flow';
+  id: string;
+  label: string;
+  matches: SearchMatch[];
+  relevance: number;
+}
+
+export interface SearchMatch {
+  field: string;
+  value: string;
+  highlightStart: number;
+  highlightEnd: number;
+}
+
+// Statistics and summary types
+export interface FilteredStatistics {
+  totalRecords: number;
+  filteredRecords: number;
+  reductionPercentage: number;
+  
+  // Traffic statistics
+  totalBytes: number;
+  totalPackets: number;
+  totalConnections: number;
+  
+  // Connection statistics
+  acceptedConnections: number;
+  rejectedConnections: number;
+  rejectionRate: number;
+  
+  // Top statistics
+  topSourceIPs: IPStatistic[];
+  topDestinationIPs: IPStatistic[];
+  topPorts: PortStatistic[];
+  topProtocols: ProtocolStatistic[];
+  
+  // Time-based statistics
+  trafficOverTime: TimeSeriesData[];
+  peakTrafficTime: Date;
+  
+  // Geographic/AWS statistics
+  topRegions: RegionStatistic[];
+  topVPCs: VPCStatistic[];
+  topAccounts: AccountStatistic[];
+}
+
+export interface IPStatistic {
+  ip: string;
+  connections: number;
+  bytes: number;
+  packets: number;
+  percentage: number;
+  isInternal?: boolean;
+  geoLocation?: string;
+}
+
+export interface ProtocolStatistic {
+  protocol: string;
+  connections: number;
+  bytes: number;
+  packets: number;
+  percentage: number;
+  averagePacketSize: number;
+}
+
+export interface RegionStatistic {
+  region: string;
+  connections: number;
+  bytes: number;
+  vpcs: number;
+  percentage: number;
+}
+
+export interface VPCStatistic {
+  vpcId: string;
+  name?: string;
+  connections: number;
+  bytes: number;
+  region: string;
+  percentage: number;
+}
+
+export interface AccountStatistic {
+  accountId: string;
+  name?: string;
+  connections: number;
+  bytes: number;
+  vpcs: number;
+  percentage: number;
+}
+
+export interface TimeSeriesData {
+  timestamp: Date;
+  bytes: number;
+  packets: number;
+  connections: number;
+  acceptedConnections: number;
+  rejectedConnections: number;
+}
