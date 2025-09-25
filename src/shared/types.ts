@@ -101,6 +101,9 @@ export interface RoleConfig {
   sessionName?: string;
   externalId?: string;
   region?: string;
+  durationSeconds?: number;
+  mfaSerial?: string;
+  mfaToken?: string;
 }
 
 export interface CredentialValidationResult {

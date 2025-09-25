@@ -16,7 +16,7 @@ module.exports = {
             configFile: 'tsconfig.main.json',
           },
         },
-        exclude: /node_modules/,
+        exclude: [/node_modules/, /\.test\.ts$/, /__tests__/],
       },
     ],
   },

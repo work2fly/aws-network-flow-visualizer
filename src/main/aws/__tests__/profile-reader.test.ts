@@ -1,6 +1,6 @@
 import { AWSProfileReader } from '../profile-reader';
 import * as fs from 'fs';
-import * as path from 'path';
+// import * as path from 'path'; // Not used in current tests
 import * as os from 'os';
 
 // Mock fs module

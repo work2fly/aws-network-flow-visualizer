@@ -1,5 +1,9 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
+import { AWSCredentialManager } from './aws/credential-manager';
+import { AWSConnectionManager } from './aws/connection-manager';
+import { setupSSOIPCHandlers, removeSSOIPCHandlers } from './ipc/sso-handlers';
+import { setupProfileIPCHandlers, removeProfileIPCHandlers } from './ipc/profile-handlers';
 
 // Security: Disable node integration and enable context isolation
 const createWindow = (): void => {
@@ -50,7 +54,21 @@ app.on('web-contents-created', (_, contents) => {
   });
 });
 
-// IPC handlers will be added here as needed
+// Initialize AWS managers
+const credentialManager = new AWSCredentialManager();
+const connectionManager = new AWSConnectionManager();
+
+// Setup IPC handlers
+setupSSOIPCHandlers(credentialManager);
+setupProfileIPCHandlers(connectionManager);
+
+// Basic IPC handlers
 ipcMain.handle('app-version', () => {
   return app.getVersion();
+});
+
+// Cleanup on app quit
+app.on('before-quit', () => {
+  removeSSOIPCHandlers();
+  removeProfileIPCHandlers();
 });

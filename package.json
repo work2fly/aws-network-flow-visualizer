@@ -46,6 +46,7 @@
     "@types/react-dom": "^18.2.7",
     "@typescript-eslint/eslint-plugin": "^8.15.0",
     "@typescript-eslint/parser": "^8.15.0",
+    "audit-ci": "^7.1.0",
     "autoprefixer": "^10.4.16",
     "concurrently": "^8.2.1",
     "css-loader": "^6.8.1",
@@ -67,11 +68,11 @@
     "typescript": "^5.6.3",
     "webpack": "^5.88.2",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^4.15.1",
-    "audit-ci": "^7.1.0"
+    "webpack-dev-server": "^4.15.1"
   },
   "dependencies": {
     "@aws-sdk/client-cloudwatch-logs": "^3.414.0",
+    "@aws-sdk/client-sso-oidc": "^3.896.0",
     "@aws-sdk/client-sts": "^3.414.0",
     "@aws-sdk/credential-providers": "^3.414.0",
     "@reduxjs/toolkit": "^1.9.6",
