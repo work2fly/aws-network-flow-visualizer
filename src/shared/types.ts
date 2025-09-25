@@ -133,3 +133,39 @@ export interface CredentialChainOptions {
   profileConfig?: ProfileConfig;
   roleConfig?: RoleConfig;
 }
+
+// CloudWatch Insights Query Types
+export interface QueryProgress {
+  recordsMatched: number;
+  recordsScanned: number;
+  bytesScanned: number;
+}
+
+export interface QueryExecutionResult {
+  success: boolean;
+  queryId?: string;
+  results?: FlowLogRecord[];
+  statistics?: QueryProgress;
+  error?: string;
+}
+
+export interface VPCFlowLogFilters {
+  sourceIPs?: string[];
+  destinationIPs?: string[];
+  sourcePorts?: (string | number)[];
+  destinationPorts?: (string | number)[];
+  protocols?: string[];
+  actions?: ('ACCEPT' | 'REJECT')[];
+  vpcIds?: string[];
+  accountIds?: string[];
+  minBytes?: number;
+  maxBytes?: number;
+  minPackets?: number;
+  maxPackets?: number;
+}
+
+export interface TGWFlowLogFilters extends VPCFlowLogFilters {
+  transitGatewayIds?: string[];
+  attachmentIds?: string[];
+  resourceTypes?: string[];
+}
