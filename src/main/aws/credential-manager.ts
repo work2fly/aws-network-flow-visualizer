@@ -1,7 +1,6 @@
 import {
   STSClient,
   GetCallerIdentityCommand,
-  AssumeRoleCommand,
   AssumeRoleCommandInput,
 } from '@aws-sdk/client-sts';
 import {
@@ -22,11 +21,19 @@ import {
   CredentialValidationResult,
   CredentialChainOptions,
 } from '../../shared/types';
+import { SSOAuthService, SSOAuthConfig, SSOTokens } from './sso-auth';
+import { SSOTokenStorage } from './sso-token-storage';
 
 export class AWSCredentialManager {
   private currentCredentials: AWSCredentials | null = null;
   private currentCredentialProvider: CredentialProvider | null = null;
   private stsClient: STSClient | null = null;
+  private ssoAuthService: SSOAuthService | null = null;
+  private ssoTokenStorage: SSOTokenStorage;
+
+  constructor() {
+    this.ssoTokenStorage = new SSOTokenStorage();
+  }
 
   /**
    * Initialize AWS SDK client with credential chain support
@@ -101,13 +108,80 @@ export class AWSCredentialManager {
   }
 
   /**
-   * Authenticate using AWS SSO
+   * Initialize SSO token storage
+   */
+  async initializeSSO(): Promise<void> {
+    await this.ssoTokenStorage.initialize();
+  }
+
+  /**
+   * Authenticate using AWS SSO with browser-based PKCE flow
    */
   async authenticateWithSSO(ssoConfig: SSOConfig): Promise<CredentialValidationResult> {
     try {
+      // Initialize SSO token storage if not already done
+      if (!(await this.ssoTokenStorage.isInitialized())) {
+        await this.ssoTokenStorage.initialize();
+      }
+
+      // Check for existing valid session
+      const existingSession = await this.ssoTokenStorage.getSession(ssoConfig.startUrl, ssoConfig.region);
+      if (existingSession && !this.isTokenExpired(existingSession.tokens)) {
+        // Use existing session
+        return await this.setupSSOCredentials(ssoConfig, existingSession.tokens);
+      }
+
+      // Create new SSO auth service
+      const authConfig: SSOAuthConfig = {
+        startUrl: ssoConfig.startUrl,
+        region: ssoConfig.region,
+        clientName: 'AWS Network Flow Visualizer'
+      };
+
+      this.ssoAuthService = new SSOAuthService(authConfig);
+
+      // Start authentication flow
+      const authResult = await this.ssoAuthService.authenticate();
+      
+      if (!authResult.success || !authResult.tokens) {
+        return {
+          valid: false,
+          error: authResult.error || 'SSO authentication failed'
+        };
+      }
+
+      // Store tokens securely
+      await this.ssoTokenStorage.storeSession(ssoConfig.startUrl, ssoConfig.region, authResult.tokens);
+
+      // Setup credentials
+      return await this.setupSSOCredentials(ssoConfig, authResult.tokens);
+
+    } catch (error) {
+      return {
+        valid: false,
+        error: `SSO authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  /**
+   * Setup SSO credentials with account and role
+   */
+  async setupSSOCredentials(ssoConfig: SSOConfig, tokens: SSOTokens): Promise<CredentialValidationResult> {
+    try {
+      if (!ssoConfig.accountId || !ssoConfig.roleName) {
+        return {
+          valid: false,
+          error: 'Account ID and role name are required for SSO credentials'
+        };
+      }
+
       const provider = fromSSO({
-        profile: ssoConfig.sessionName,
-      });
+        ssoStartUrl: ssoConfig.startUrl,
+        ssoRegion: ssoConfig.region,
+        ssoAccountId: ssoConfig.accountId,
+        ssoRoleName: ssoConfig.roleName
+      } as any);
 
       const result = await this.validateCredentialProvider(provider, ssoConfig.region, 'sso');
       
@@ -128,9 +202,95 @@ export class AWSCredentialManager {
     } catch (error) {
       return {
         valid: false,
-        error: `SSO authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error: `SSO credential setup failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       };
     }
+  }
+
+  /**
+   * Get available SSO accounts
+   */
+  async getSSOAccounts(startUrl: string, region: string): Promise<Array<{accountId: string; accountName: string; emailAddress: string}>> {
+    if (!this.ssoAuthService) {
+      throw new Error('SSO not authenticated');
+    }
+
+    return await this.ssoAuthService.getAccounts();
+  }
+
+  /**
+   * Get available roles for an SSO account
+   */
+  async getSSOAccountRoles(accountId: string): Promise<Array<{roleName: string; accountId: string}>> {
+    if (!this.ssoAuthService) {
+      throw new Error('SSO not authenticated');
+    }
+
+    return await this.ssoAuthService.getRolesForAccount(accountId);
+  }
+
+  /**
+   * Refresh SSO tokens if needed
+   */
+  async refreshSSOTokens(startUrl: string, region: string): Promise<CredentialValidationResult> {
+    try {
+      if (!this.ssoAuthService) {
+        return {
+          valid: false,
+          error: 'SSO not authenticated'
+        };
+      }
+
+      const refreshResult = await this.ssoAuthService.refreshToken();
+      
+      if (!refreshResult.success || !refreshResult.tokens) {
+        return {
+          valid: false,
+          error: refreshResult.error || 'Token refresh failed'
+        };
+      }
+
+      // Update stored tokens
+      await this.ssoTokenStorage.updateSession(startUrl, region, refreshResult.tokens);
+
+      return {
+        valid: true,
+        credentialType: 'sso'
+      };
+
+    } catch (error) {
+      return {
+        valid: false,
+        error: `SSO token refresh failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  /**
+   * Logout from SSO
+   */
+  async logoutSSO(): Promise<void> {
+    if (this.ssoAuthService) {
+      this.ssoAuthService.logout();
+      this.ssoAuthService = null;
+    }
+    
+    // Clear stored sessions
+    await this.ssoTokenStorage.clearAllSessions();
+    
+    // Clear current credentials if they were SSO-based
+    if (this.getStoredCredentialType() === 'sso') {
+      this.clearCredentials();
+    }
+  }
+
+  /**
+   * Check if SSO token is expired
+   */
+  private isTokenExpired(tokens: SSOTokens): boolean {
+    const now = new Date();
+    const expirationBuffer = 5 * 60 * 1000; // 5 minutes buffer
+    return tokens.expiresAt.getTime() - now.getTime() < expirationBuffer;
   }
 
   /**
@@ -184,6 +344,7 @@ export class AWSCredentialManager {
         RoleArn: roleConfig.roleArn,
         RoleSessionName: roleConfig.sessionName || 'aws-network-flow-visualizer',
         ExternalId: roleConfig.externalId,
+        DurationSeconds: roleConfig.durationSeconds || 3600, // Default 1 hour
       };
 
       const provider = fromTemporaryCredentials({
@@ -212,6 +373,46 @@ export class AWSCredentialManager {
       return {
         valid: false,
         error: `Role assumption failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  /**
+   * Authenticate using profile with automatic role assumption if configured
+   */
+  async authenticateWithProfileAndRole(profileName: string, region?: string): Promise<CredentialValidationResult> {
+    try {
+      // First authenticate with the base profile
+      const profileConfig: ProfileConfig = {
+        profileName,
+        region,
+      };
+
+      const baseResult = await this.authenticateWithProfile(profileConfig);
+      if (!baseResult.valid) {
+        return baseResult;
+      }
+
+      // Check if this profile has a role to assume
+      const profileReader = new (await import('./profile-reader')).AWSProfileReader();
+      const profile = await profileReader.getProfile(profileName);
+      
+      if (profile?.roleArn) {
+        // This profile assumes a role, so assume it
+        const roleConfig: RoleConfig = {
+          roleArn: profile.roleArn,
+          sessionName: `${profileName}-session`,
+          region: region || profile.region,
+        };
+
+        return await this.authenticateWithRole(roleConfig);
+      }
+
+      return baseResult;
+    } catch (error) {
+      return {
+        valid: false,
+        error: `Profile with role authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       };
     }
   }

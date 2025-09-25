@@ -1,6 +1,6 @@
 import * as fs from 'fs';
-import * as path from 'path';
 import * as os from 'os';
+import * as path from 'path';
 import { AWSProfile } from '../../shared/types';
 
 export class AWSProfileReader {
@@ -220,7 +220,7 @@ export class AWSProfileReader {
   /**
    * Validate profile configuration
    */
-  async validateProfile(profileName: string): Promise<{ valid: boolean; error?: string }> {
+  async validateProfile(profileName: string): Promise<{ valid: boolean; error?: string; profileType?: 'sso' | 'role' | 'credentials' }> {
     try {
       const profile = await this.getProfile(profileName);
       
@@ -233,19 +233,27 @@ export class AWSProfileReader {
 
       // Check for SSO configuration
       if (profile.ssoStartUrl && profile.ssoRegion && profile.ssoAccountId && profile.ssoRoleName) {
-        return { valid: true };
+        return { valid: true, profileType: 'sso' };
       }
 
       // Check for role configuration
       if (profile.roleArn && profile.sourceProfile) {
-        return { valid: true };
+        // Validate that source profile exists
+        const sourceProfile = await this.getProfile(profile.sourceProfile);
+        if (!sourceProfile) {
+          return {
+            valid: false,
+            error: `Source profile '${profile.sourceProfile}' not found for role profile '${profileName}'`,
+          };
+        }
+        return { valid: true, profileType: 'role' };
       }
 
       // Check if credentials file has this profile (basic validation)
       if (fs.existsSync(this.credentialsPath)) {
         const content = fs.readFileSync(this.credentialsPath, 'utf-8');
         if (content.includes(`[${profileName}]`)) {
-          return { valid: true };
+          return { valid: true, profileType: 'credentials' };
         }
       }
 
@@ -259,5 +267,98 @@ export class AWSProfileReader {
         error: `Error validating profile: ${error instanceof Error ? error.message : 'Unknown error'}`,
       };
     }
+  }
+
+  /**
+   * Get profiles that can assume roles (have credentials or are SSO profiles)
+   */
+  async getSourceProfiles(): Promise<AWSProfile[]> {
+    const allProfiles = await this.getAvailableProfiles();
+    return allProfiles.filter(profile => {
+      // SSO profiles can be source profiles
+      if (profile.ssoStartUrl && profile.ssoRegion && profile.ssoAccountId && profile.ssoRoleName) {
+        return true;
+      }
+      
+      // Profiles with credentials can be source profiles
+      if (fs.existsSync(this.credentialsPath)) {
+        const content = fs.readFileSync(this.credentialsPath, 'utf-8');
+        return content.includes(`[${profile.name}]`);
+      }
+      
+      return false;
+    });
+  }
+
+  /**
+   * Get profiles that assume roles
+   */
+  async getRoleProfiles(): Promise<AWSProfile[]> {
+    const allProfiles = await this.getAvailableProfiles();
+    return allProfiles.filter(profile => profile.roleArn && profile.sourceProfile);
+  }
+
+  /**
+   * Check if profile requires MFA
+   */
+  async profileRequiresMFA(profileName: string): Promise<boolean> {
+    const profile = await this.getProfile(profileName);
+    if (!profile) return false;
+
+    // Check if profile or its source profile has MFA device configured
+    if (profile.roleArn && profile.sourceProfile) {
+      // Check source profile for MFA
+      const sourceProfile = await this.getProfile(profile.sourceProfile);
+      return this.checkProfileForMFA(sourceProfile);
+    }
+
+    return this.checkProfileForMFA(profile);
+  }
+
+  /**
+   * Check individual profile for MFA configuration
+   */
+  private checkProfileForMFA(profile: AWSProfile | null): boolean {
+    if (!profile) return false;
+    
+    // Check config file for MFA device
+    try {
+      const configContent = fs.readFileSync(this.configPath, 'utf-8');
+      const profileSection = this.extractProfileSection(configContent, profile.name);
+      return profileSection.includes('mfa_serial') || profileSection.includes('mfa_device');
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Extract profile section from config content
+   */
+  private extractProfileSection(content: string, profileName: string): string {
+    const lines = content.split('\n');
+    let inProfile = false;
+    let profileContent = '';
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // Check for profile section start
+      const profileMatch = trimmedLine.match(/^\[(?:profile\s+)?([^\]]+)\]$/);
+      if (profileMatch) {
+        inProfile = profileMatch[1] === profileName;
+        continue;
+      }
+
+      // If we're in the target profile, collect content
+      if (inProfile) {
+        // Stop if we hit another profile section
+        if (trimmedLine.startsWith('[')) {
+          break;
+        }
+        profileContent += line + '\n';
+      }
+    }
+
+    return profileContent;
   }
 }

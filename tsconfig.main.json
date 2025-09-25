@@ -19,6 +19,8 @@
   "exclude": [
     "node_modules",
     "dist",
-    "src/renderer"
+    "src/renderer",
+    "**/*.test.ts",
+    "**/__tests__/**/*"
   ]
 }
