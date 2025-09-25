@@ -15,6 +15,7 @@ A cross-platform desktop application for visualizing AWS network traffic flows a
 ## Architecture
 
 Built with:
+
 - **Electron** + **React** + **TypeScript** for cross-platform desktop experience
 - **Cytoscape.js** for network topology visualization
 - **D3.js** for charts and timeline visualizations
@@ -41,12 +42,14 @@ The project structure and development environment have been set up. The applicat
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js 18+
 - npm or yarn
 
 ### Development Setup
 
 1. Install dependencies:
+
    ```bash
    npm install
    ```
@@ -62,7 +65,7 @@ The project structure and development environment have been set up. The applicat
 - `npm run build` - Build production version
 - `npm run package` - Package application for current platform
 - `npm run package:linux` - Package for Linux
-- `npm run package:mac` - Package for macOS  
+- `npm run package:mac` - Package for macOS
 - `npm run package:win` - Package for Windows
 - `npm run test` - Run test suite
 - `npm run lint` - Run ESLint
@@ -112,6 +115,7 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our branching stra
 ### Branch Protection
 
 The `main` branch is protected and requires:
+
 - Pull request reviews
 - All status checks to pass
 - Branches to be up to date before merging

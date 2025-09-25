@@ -62,12 +62,14 @@ export interface TopologyMetadata {
   timeRange: { start: Date; end: Date };
 }
 
+// AWS Authentication Types
 export interface AWSCredentials {
   accessKeyId?: string;
   secretAccessKey?: string;
   sessionToken?: string;
   region: string;
   profile?: string;
+  expiration?: Date;
 }
 
 export interface ConnectionStatus {
@@ -75,4 +77,56 @@ export interface ConnectionStatus {
   region?: string;
   accountId?: string;
   error?: string;
+  lastChecked?: Date;
+  credentialType?: CredentialType;
+}
+
+export type CredentialType = 'sso' | 'profile' | 'role' | 'environment' | 'instance';
+
+export interface SSOConfig {
+  startUrl: string;
+  region: string;
+  accountId?: string;
+  roleName?: string;
+  sessionName?: string;
+}
+
+export interface ProfileConfig {
+  profileName: string;
+  region?: string;
+}
+
+export interface RoleConfig {
+  roleArn: string;
+  sessionName?: string;
+  externalId?: string;
+  region?: string;
+}
+
+export interface CredentialValidationResult {
+  valid: boolean;
+  error?: string;
+  accountId?: string;
+  region?: string;
+  expiration?: Date;
+  credentialType?: CredentialType;
+}
+
+export interface AWSProfile {
+  name: string;
+  region?: string;
+  output?: string;
+  ssoStartUrl?: string;
+  ssoRegion?: string;
+  ssoAccountId?: string;
+  ssoRoleName?: string;
+  roleArn?: string;
+  sourceProfile?: string;
+}
+
+export interface CredentialChainOptions {
+  preferredCredentialTypes?: CredentialType[];
+  ssoConfig?: SSOConfig;
+  profileConfig?: ProfileConfig;
+  roleConfig?: RoleConfig;
 }
