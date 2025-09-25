@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback, useState } from 'react';
+import React, { useEffect, useRef, useCallback, useState, forwardRef, useImperativeHandle } from 'react';
 import cytoscape, { Core, NodeSingular, EdgeSingular, AnimationOptions } from 'cytoscape';
 import { NetworkTopology, NetworkNode, NetworkEdge } from '@shared/types';
 
@@ -11,14 +11,19 @@ interface NetworkTopologyRendererProps {
   className?: string;
 }
 
-export const NetworkTopologyRenderer: React.FC<NetworkTopologyRendererProps> = ({
+export interface NetworkTopologyRendererRef {
+  getCytoscapeInstance: () => Core | null;
+  exportImage: (format: 'png' | 'svg', options?: any) => Promise<Blob>;
+}
+
+export const NetworkTopologyRenderer = forwardRef<NetworkTopologyRendererRef, NetworkTopologyRendererProps>(({
   topology,
   onNodeSelect,
   onEdgeSelect,
   showAnimations = true,
   layoutAlgorithm = 'cose',
   className = ''
-}) => {
+}, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
   const animationRef = useRef<NodeJS.Timeout | null>(null);
@@ -227,6 +232,36 @@ export const NetworkTopologyRenderer: React.FC<NetworkTopologyRendererProps> = (
     cyRef.current.elements().removeClass('highlighted dimmed');
   }, []);
 
+  // Expose methods through ref
+  useImperativeHandle(ref, () => ({
+    getCytoscapeInstance: () => cyRef.current,
+    exportImage: async (format: 'png' | 'svg', options = {}) => {
+      if (!cyRef.current) {
+        throw new Error('Cytoscape instance not available');
+      }
+
+      const exportOptions = {
+        output: 'blob',
+        bg: options.backgroundColor || '#ffffff',
+        full: true,
+        scale: options.scale || 2,
+        quality: options.quality || 1.0,
+        maxWidth: options.maxWidth || 1920,
+        maxHeight: options.maxHeight || 1080,
+        ...options
+      };
+
+      if (format === 'png') {
+        return cyRef.current.png(exportOptions);
+      } else if (format === 'svg') {
+        const svgString = cyRef.current.svg(exportOptions);
+        return new Blob([svgString], { type: 'image/svg+xml' });
+      } else {
+        throw new Error(`Unsupported format: ${format}`);
+      }
+    }
+  }), []);
+
   return (
     <div className={`relative w-full h-full ${className}`}>
       <div 
@@ -312,7 +347,7 @@ export const NetworkTopologyRenderer: React.FC<NetworkTopologyRendererProps> = (
       )}
     </div>
   );
-};
+});
 
 // Enhanced Cytoscape styles with animations and visual indicators
 function getAdvancedCytoscapeStyles() {
