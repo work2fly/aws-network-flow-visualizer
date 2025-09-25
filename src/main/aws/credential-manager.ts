@@ -1,0 +1,397 @@
+import {
+  STSClient,
+  GetCallerIdentityCommand,
+  AssumeRoleCommand,
+  AssumeRoleCommandInput,
+} from '@aws-sdk/client-sts';
+import {
+  fromSSO,
+  fromIni,
+  fromEnv,
+  fromInstanceMetadata,
+  fromTemporaryCredentials,
+} from '@aws-sdk/credential-providers';
+import { CredentialProvider } from '@aws-sdk/types';
+import {
+  AWSCredentials,
+  ConnectionStatus,
+  CredentialType,
+  SSOConfig,
+  ProfileConfig,
+  RoleConfig,
+  CredentialValidationResult,
+  CredentialChainOptions,
+} from '../../shared/types';
+
+export class AWSCredentialManager {
+  private currentCredentials: AWSCredentials | null = null;
+  private currentCredentialProvider: CredentialProvider | null = null;
+  private stsClient: STSClient | null = null;
+
+  /**
+   * Initialize AWS SDK client with credential chain support
+   */
+  async initializeWithCredentialChain(
+    options: CredentialChainOptions = {}
+  ): Promise<CredentialValidationResult> {
+    const { preferredCredentialTypes = ['sso', 'profile', 'environment', 'instance'] } = options;
+
+    for (const credentialType of preferredCredentialTypes) {
+      try {
+        let provider: CredentialProvider;
+        let region = 'us-east-1'; // Default region
+
+        switch (credentialType) {
+          case 'sso':
+            if (!options.ssoConfig) continue;
+            provider = fromSSO({
+              profile: options.ssoConfig.sessionName,
+            });
+            region = options.ssoConfig.region;
+            break;
+
+          case 'profile':
+            provider = fromIni({
+              profile: options.profileConfig?.profileName,
+            });
+            region = options.profileConfig?.region || region;
+            break;
+
+          case 'environment':
+            provider = fromEnv();
+            region = process.env.AWS_DEFAULT_REGION || process.env.AWS_REGION || region;
+            break;
+
+          case 'instance':
+            provider = fromInstanceMetadata();
+            break;
+
+          case 'role':
+            if (!options.roleConfig) continue;
+            // Role assumption requires base credentials, so we'll handle this separately
+            continue;
+
+          default:
+            continue;
+        }
+
+        const result = await this.validateCredentialProvider(provider, region, credentialType);
+        if (result.valid) {
+          this.currentCredentialProvider = provider;
+          this.currentCredentials = {
+            region,
+            expiration: result.expiration,
+          };
+          this.stsClient = new STSClient({
+            region,
+            credentials: provider,
+          });
+          return result;
+        }
+      } catch (error) {
+        console.warn(`Failed to initialize ${credentialType} credentials:`, error);
+        continue;
+      }
+    }
+
+    return {
+      valid: false,
+      error: 'No valid credentials found in credential chain',
+    };
+  }
+
+  /**
+   * Authenticate using AWS SSO
+   */
+  async authenticateWithSSO(ssoConfig: SSOConfig): Promise<CredentialValidationResult> {
+    try {
+      const provider = fromSSO({
+        profile: ssoConfig.sessionName,
+      });
+
+      const result = await this.validateCredentialProvider(provider, ssoConfig.region, 'sso');
+      
+      if (result.valid) {
+        this.currentCredentialProvider = provider;
+        this.currentCredentials = {
+          region: ssoConfig.region,
+          expiration: result.expiration,
+        };
+        this.setCredentialType('sso');
+        this.stsClient = new STSClient({
+          region: ssoConfig.region,
+          credentials: provider,
+        });
+      }
+
+      return result;
+    } catch (error) {
+      return {
+        valid: false,
+        error: `SSO authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  /**
+   * Authenticate using AWS CLI profile
+   */
+  async authenticateWithProfile(profileConfig: ProfileConfig): Promise<CredentialValidationResult> {
+    try {
+      const provider = fromIni({
+        profile: profileConfig.profileName,
+      });
+
+      const region = profileConfig.region || 'us-east-1';
+      const result = await this.validateCredentialProvider(provider, region, 'profile');
+      
+      if (result.valid) {
+        this.currentCredentialProvider = provider;
+        this.currentCredentials = {
+          region,
+          profile: profileConfig.profileName,
+          expiration: result.expiration,
+        };
+        this.setCredentialType('profile');
+        this.stsClient = new STSClient({
+          region,
+          credentials: provider,
+        });
+      }
+
+      return result;
+    } catch (error) {
+      return {
+        valid: false,
+        error: `Profile authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  /**
+   * Authenticate using IAM role assumption
+   */
+  async authenticateWithRole(roleConfig: RoleConfig): Promise<CredentialValidationResult> {
+    try {
+      if (!this.currentCredentialProvider) {
+        return {
+          valid: false,
+          error: 'Base credentials required for role assumption',
+        };
+      }
+
+      const assumeRoleParams: AssumeRoleCommandInput = {
+        RoleArn: roleConfig.roleArn,
+        RoleSessionName: roleConfig.sessionName || 'aws-network-flow-visualizer',
+        ExternalId: roleConfig.externalId,
+      };
+
+      const provider = fromTemporaryCredentials({
+        params: assumeRoleParams,
+        masterCredentials: this.currentCredentialProvider,
+      });
+
+      const region = roleConfig.region || this.currentCredentials?.region || 'us-east-1';
+      const result = await this.validateCredentialProvider(provider, region, 'role');
+      
+      if (result.valid) {
+        this.currentCredentialProvider = provider;
+        this.currentCredentials = {
+          region,
+          expiration: result.expiration,
+        };
+        this.setCredentialType('role');
+        this.stsClient = new STSClient({
+          region,
+          credentials: provider,
+        });
+      }
+
+      return result;
+    } catch (error) {
+      return {
+        valid: false,
+        error: `Role assumption failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  /**
+   * Test current connection and validate credentials
+   */
+  async testConnection(): Promise<ConnectionStatus> {
+    if (!this.stsClient || !this.currentCredentialProvider) {
+      return {
+        connected: false,
+        error: 'No credentials configured',
+      };
+    }
+
+    try {
+      const command = new GetCallerIdentityCommand({});
+      const response = await this.stsClient.send(command);
+
+      return {
+        connected: true,
+        accountId: response.Account,
+        region: this.currentCredentials?.region,
+        lastChecked: new Date(),
+        credentialType: this.getStoredCredentialType(),
+      };
+    } catch (error) {
+      return {
+        connected: false,
+        error: error instanceof Error ? error.message : 'Connection test failed',
+        lastChecked: new Date(),
+      };
+    }
+  }
+
+  /**
+   * Validate credential provider by testing STS call
+   */
+  private async validateCredentialProvider(
+    provider: CredentialProvider,
+    region: string,
+    credentialType: CredentialType
+  ): Promise<CredentialValidationResult> {
+    try {
+      // Try to get credential expiration if available first
+      let expiration: Date | undefined;
+      try {
+        const credentials = await provider();
+        if (credentials.expiration) {
+          expiration = credentials.expiration;
+        }
+      } catch {
+        // Expiration not available, continue without it
+      }
+
+      const testClient = new STSClient({
+        region,
+        credentials: provider,
+      });
+
+      const command = new GetCallerIdentityCommand({});
+      const response = await testClient.send(command);
+
+      return {
+        valid: true,
+        accountId: response.Account,
+        region,
+        expiration,
+        credentialType,
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        error: error instanceof Error ? error.message : 'Credential validation failed',
+      };
+    }
+  }
+
+  /**
+   * Get current credential type
+   */
+  private getCredentialType(): CredentialType | undefined {
+    // This is a simplified implementation - in practice, you might want to track this more explicitly
+    if (this.currentCredentials?.profile) {
+      return 'profile';
+    }
+    return 'environment'; // Default fallback
+  }
+
+  /**
+   * Set credential type for tracking
+   */
+  private setCredentialType(credentialType: CredentialType): void {
+    if (this.currentCredentials) {
+      // Store credential type in a private property for tracking
+      (this.currentCredentials as any)._credentialType = credentialType;
+    }
+  }
+
+  /**
+   * Get stored credential type
+   */
+  private getStoredCredentialType(): CredentialType | undefined {
+    return (this.currentCredentials as any)?._credentialType;
+  }
+
+  /**
+   * Get current credentials
+   */
+  getCurrentCredentials(): AWSCredentials | null {
+    return this.currentCredentials;
+  }
+
+  /**
+   * Get current STS client
+   */
+  getSTSClient(): STSClient | null {
+    return this.stsClient;
+  }
+
+  /**
+   * Check if credentials are expired or about to expire
+   */
+  areCredentialsExpired(): boolean {
+    if (!this.currentCredentials?.expiration) {
+      return false; // No expiration info available
+    }
+
+    const now = new Date();
+    const expirationBuffer = 5 * 60 * 1000; // 5 minutes buffer
+    return this.currentCredentials.expiration.getTime() - now.getTime() < expirationBuffer;
+  }
+
+  /**
+   * Clear current credentials
+   */
+  clearCredentials(): void {
+    this.currentCredentials = null;
+    this.currentCredentialProvider = null;
+    this.stsClient = null;
+  }
+
+  /**
+   * Refresh credentials if possible
+   */
+  async refreshCredentials(): Promise<CredentialValidationResult> {
+    if (!this.currentCredentialProvider || !this.currentCredentials) {
+      return {
+        valid: false,
+        error: 'No credentials to refresh',
+      };
+    }
+
+    try {
+      // Force refresh by creating a new STS client
+      this.stsClient = new STSClient({
+        region: this.currentCredentials.region,
+        credentials: this.currentCredentialProvider,
+      });
+
+      const connectionStatus = await this.testConnection();
+      
+      if (connectionStatus.connected) {
+        return {
+          valid: true,
+          accountId: connectionStatus.accountId,
+          region: connectionStatus.region,
+          credentialType: this.getStoredCredentialType(),
+        };
+      } else {
+        return {
+          valid: false,
+          error: connectionStatus.error,
+        };
+      }
+    } catch (error) {
+      return {
+        valid: false,
+        error: `Credential refresh failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+}
