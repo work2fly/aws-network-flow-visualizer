@@ -45,12 +45,12 @@ export interface QueryMetrics {
  * Orchestrates query execution, caching, and data processing for VPC and TGW flow logs
  */
 export class FlowLogQueryEngine extends EventEmitter {
-  private client: CloudWatchInsightsClient;
-  private vpcQueryBuilder: VPCFlowLogQueryBuilder;
-  private tgwQueryBuilder: TGWFlowLogQueryBuilder;
+  private client!: CloudWatchInsightsClient;
+  private vpcQueryBuilder!: VPCFlowLogQueryBuilder;
+  private tgwQueryBuilder!: TGWFlowLogQueryBuilder;
   private credentialManager: AWSCredentialManager;
   private queryCache: Map<string, CachedQueryResult> = new Map();
-  private activeQueries: Map<string, Promise<QueryExecutionResult>> = new Map();
+  private activeQueries: Map<string, Promise<any>> = new Map();
   private config: Required<QueryEngineConfig>;
 
   constructor(config: QueryEngineConfig) {
@@ -287,6 +287,21 @@ export class FlowLogQueryEngine extends EventEmitter {
   }
 
   /**
+   * Get available log groups
+   */
+  async getLogGroups(namePrefix?: string, limit?: number): Promise<Array<{ name: string; creationTime: Date; storedBytes: number }>> {
+    try {
+      return await this.client.getLogGroups(namePrefix, limit);
+    } catch (error) {
+      this.emit('error', {
+        type: 'getLogGroups',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Clear query cache
    */
   clearCache(): void {
@@ -453,7 +468,7 @@ export class FlowLogQueryEngine extends EventEmitter {
           return { result, crossAccountResults };
         } else {
           // Execute single-account query
-          const result = await this.tgwQueryBuilder.executeQuery(params, progressCallback);
+          const result = await this.tgwQueryBuilder.executeQuery(params, progressCallback ? (progress) => progressCallback('current', progress) : undefined);
           return { result };
         }
       } catch (error) {

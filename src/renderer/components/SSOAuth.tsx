@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { SSOConfig } from '../../shared/types';
+import { LoadingButton, HelpIcon, Tooltip } from './common';
+import { useErrorHandler } from '../hooks/useErrorHandler';
+import { useOperationStatus } from '../hooks/useOperationStatus';
 
 export interface SSOAuthProps {
   onAuthenticate: (config: SSOConfig) => Promise<void>;
@@ -22,6 +25,10 @@ export const SSOAuth: React.FC<SSOAuthProps> = ({
   const [region, setRegion] = useState(currentConfig?.region || 'us-east-1');
   const [sessionName, setSessionName] = useState(currentConfig?.sessionName || 'aws-network-flow-visualizer');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  
+  const { handleError, handleWarning } = useErrorHandler();
+  const { runOperation } = useOperationStatus();
 
   // Common AWS regions
   const awsRegions = [
@@ -37,10 +44,43 @@ export const SSOAuth: React.FC<SSOAuthProps> = ({
     { value: 'ap-northeast-1', label: 'Asia Pacific (Tokyo)' }
   ];
 
+  // Validation function
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (!startUrl.trim()) {
+      errors.startUrl = 'SSO Start URL is required';
+    } else {
+      try {
+        const url = new URL(startUrl.trim());
+        if (!url.hostname.includes('awsapps.com')) {
+          errors.startUrl = 'Start URL should be an AWS SSO portal URL (*.awsapps.com)';
+        }
+      } catch {
+        errors.startUrl = 'Please enter a valid URL';
+      }
+    }
+    
+    if (!region) {
+      errors.region = 'AWS Region is required';
+    }
+    
+    if (sessionName.trim().length > 64) {
+      errors.sessionName = 'Session name must be 64 characters or less';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!startUrl.trim()) {
+    if (!validateForm()) {
+      handleWarning('Please correct the form errors before proceeding', {
+        component: 'SSOAuth',
+        operation: 'Form Validation'
+      });
       return;
     }
 
@@ -50,15 +90,63 @@ export const SSOAuth: React.FC<SSOAuthProps> = ({
       sessionName: sessionName.trim() || 'aws-network-flow-visualizer'
     };
 
-    await onAuthenticate(config);
+    try {
+      await runOperation(
+        {
+          name: 'AWS SSO Authentication',
+          canCancel: false,
+          estimatedDuration: 30000 // 30 seconds
+        },
+        async (updateProgress) => {
+          updateProgress({ progress: 10, message: 'Initiating SSO authentication...' });
+          
+          // Simulate progress updates
+          setTimeout(() => updateProgress({ progress: 30, message: 'Opening browser for authentication...' }), 1000);
+          setTimeout(() => updateProgress({ progress: 60, message: 'Waiting for user authentication...' }), 3000);
+          setTimeout(() => updateProgress({ progress: 90, message: 'Finalizing authentication...' }), 5000);
+          
+          await onAuthenticate(config);
+        }
+      );
+    } catch (error) {
+      handleError(error, {
+        component: 'SSOAuth',
+        operation: 'AWS SSO Authentication'
+      }, {
+        customMessage: 'Failed to authenticate with AWS SSO. Please check your configuration and try again.',
+        retryAction: () => handleSubmit(e)
+      });
+    }
   };
 
   const handleLogout = async () => {
-    await onLogout();
-    // Clear form on logout
-    setStartUrl('');
-    setRegion('us-east-1');
-    setSessionName('aws-network-flow-visualizer');
+    try {
+      await runOperation(
+        {
+          name: 'AWS SSO Logout',
+          canCancel: false,
+          estimatedDuration: 5000 // 5 seconds
+        },
+        async (updateProgress) => {
+          updateProgress({ progress: 50, message: 'Signing out...' });
+          await onLogout();
+          updateProgress({ progress: 100, message: 'Signed out successfully' });
+        }
+      );
+      
+      // Clear form on logout
+      setStartUrl('');
+      setRegion('us-east-1');
+      setSessionName('aws-network-flow-visualizer');
+      setValidationErrors({});
+    } catch (error) {
+      handleError(error, {
+        component: 'SSOAuth',
+        operation: 'AWS SSO Logout'
+      }, {
+        customMessage: 'Failed to sign out. You may need to clear your browser cookies manually.'
+      });
+    }
   };
 
   if (isAuthenticated) {
@@ -92,12 +180,13 @@ export const SSOAuth: React.FC<SSOAuthProps> = ({
           </div>
         </div>
 
-        <button
+        <LoadingButton
           onClick={handleLogout}
-          className="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+          variant="danger"
+          className="w-full"
         >
           Sign Out
-        </button>
+        </LoadingButton>
       </div>
     );
   }
@@ -114,33 +203,68 @@ export const SSOAuth: React.FC<SSOAuthProps> = ({
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="startUrl" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="startUrl" className="flex items-center text-sm font-medium text-gray-700 mb-1">
             SSO Start URL *
+            <HelpIcon
+              content={
+                <div className="space-y-2">
+                  <p>Your AWS SSO start URL can be found in:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-xs">
+                    <li>AWS SSO Console → Settings</li>
+                    <li>Look for "User portal URL"</li>
+                    <li>Should end with "/start"</li>
+                  </ol>
+                  <p className="text-xs">Example: https://my-company.awsapps.com/start</p>
+                </div>
+              }
+              className="ml-1"
+            />
           </label>
           <input
             type="url"
             id="startUrl"
             value={startUrl}
-            onChange={(e) => setStartUrl(e.target.value)}
+            onChange={(e) => {
+              setStartUrl(e.target.value);
+              if (validationErrors.startUrl) {
+                setValidationErrors(prev => ({ ...prev, startUrl: '' }));
+              }
+            }}
             placeholder="https://your-sso-portal.awsapps.com/start"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+              validationErrors.startUrl ? 'border-red-300' : 'border-gray-300'
+            }`}
             required
             disabled={isAuthenticating}
           />
+          {validationErrors.startUrl && (
+            <p className="mt-1 text-xs text-red-600">{validationErrors.startUrl}</p>
+          )}
           <p className="mt-1 text-xs text-gray-500">
             Your AWS SSO start URL (found in AWS SSO console)
           </p>
         </div>
 
         <div>
-          <label htmlFor="region" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="region" className="flex items-center text-sm font-medium text-gray-700 mb-1">
             AWS Region *
+            <HelpIcon
+              content="Select the AWS region where your SSO is configured. This should match the region shown in your AWS SSO console."
+              className="ml-1"
+            />
           </label>
           <select
             id="region"
             value={region}
-            onChange={(e) => setRegion(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            onChange={(e) => {
+              setRegion(e.target.value);
+              if (validationErrors.region) {
+                setValidationErrors(prev => ({ ...prev, region: '' }));
+              }
+            }}
+            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+              validationErrors.region ? 'border-red-300' : 'border-gray-300'
+            }`}
             required
             disabled={isAuthenticating}
           >
@@ -150,6 +274,9 @@ export const SSOAuth: React.FC<SSOAuthProps> = ({
               </option>
             ))}
           </select>
+          {validationErrors.region && (
+            <p className="mt-1 text-xs text-red-600">{validationErrors.region}</p>
+          )}
         </div>
 
         <div>
@@ -165,20 +292,35 @@ export const SSOAuth: React.FC<SSOAuthProps> = ({
         {showAdvanced && (
           <div className="border-t pt-4">
             <div>
-              <label htmlFor="sessionName" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="sessionName" className="flex items-center text-sm font-medium text-gray-700 mb-1">
                 Session Name
+                <HelpIcon
+                  content="Optional session name used for tracking and auditing purposes in AWS CloudTrail logs."
+                  className="ml-1"
+                />
               </label>
               <input
                 type="text"
                 id="sessionName"
                 value={sessionName}
-                onChange={(e) => setSessionName(e.target.value)}
+                onChange={(e) => {
+                  setSessionName(e.target.value);
+                  if (validationErrors.sessionName) {
+                    setValidationErrors(prev => ({ ...prev, sessionName: '' }));
+                  }
+                }}
                 placeholder="aws-network-flow-visualizer"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  validationErrors.sessionName ? 'border-red-300' : 'border-gray-300'
+                }`}
                 disabled={isAuthenticating}
+                maxLength={64}
               />
+              {validationErrors.sessionName && (
+                <p className="mt-1 text-xs text-red-600">{validationErrors.sessionName}</p>
+              )}
               <p className="mt-1 text-xs text-gray-500">
-                Optional session name for tracking purposes
+                Optional session name for tracking purposes (max 64 characters)
               </p>
             </div>
           </div>
@@ -202,23 +344,16 @@ export const SSOAuth: React.FC<SSOAuthProps> = ({
           </div>
         )}
 
-        <button
+        <LoadingButton
           type="submit"
-          disabled={isAuthenticating || !startUrl.trim()}
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          isLoading={isAuthenticating}
+          loadingText="Authenticating..."
+          disabled={!startUrl.trim()}
+          variant="primary"
+          className="w-full"
         >
-          {isAuthenticating ? (
-            <div className="flex items-center justify-center">
-              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Authenticating...
-            </div>
-          ) : (
-            'Sign In with AWS SSO'
-          )}
-        </button>
+          Sign In with AWS SSO
+        </LoadingButton>
       </form>
 
       <div className="mt-6 text-xs text-gray-500">

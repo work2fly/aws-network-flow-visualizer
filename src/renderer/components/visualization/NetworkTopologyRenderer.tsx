@@ -235,7 +235,7 @@ export const NetworkTopologyRenderer = forwardRef<NetworkTopologyRendererRef, Ne
   // Expose methods through ref
   useImperativeHandle(ref, () => ({
     getCytoscapeInstance: () => cyRef.current,
-    exportImage: async (format: 'png' | 'svg', options = {}) => {
+    exportImage: async (format: 'png' | 'svg', options = {}): Promise<Blob> => {
       if (!cyRef.current) {
         throw new Error('Cytoscape instance not available');
       }
@@ -252,9 +252,11 @@ export const NetworkTopologyRenderer = forwardRef<NetworkTopologyRendererRef, Ne
       };
 
       if (format === 'png') {
-        return cyRef.current.png(exportOptions);
+        const result = cyRef.current.png(exportOptions);
+        return result as unknown as Blob;
       } else if (format === 'svg') {
-        const svgString = cyRef.current.svg(exportOptions);
+        // SVG export for Cytoscape.js - use type assertion for svg method
+        const svgString = (cyRef.current as any).svg(exportOptions);
         return new Blob([svgString], { type: 'image/svg+xml' });
       } else {
         throw new Error(`Unsupported format: ${format}`);
@@ -350,7 +352,7 @@ export const NetworkTopologyRenderer = forwardRef<NetworkTopologyRendererRef, Ne
 });
 
 // Enhanced Cytoscape styles with animations and visual indicators
-function getAdvancedCytoscapeStyles() {
+function getAdvancedCytoscapeStyles(): cytoscape.StylesheetStyle[] {
   return [
     // Base node styles
     {
@@ -369,9 +371,9 @@ function getAdvancedCytoscapeStyles() {
         'text-outline-width': 1,
         'width': 'data(nodeSize)',
         'height': 'data(nodeSize)',
-        'shape': 'data(shape)',
-        'transition-property': 'background-color, border-width, width, height',
-        'transition-duration': '0.3s'
+        'shape': 'ellipse' as any,
+        'transition-property': 'background-color, border-width, width, height' as any,
+        'transition-duration': 300 as any
       }
     },
     // Node type specific shapes
@@ -416,8 +418,7 @@ function getAdvancedCytoscapeStyles() {
       selector: 'node.active',
       style: {
         'border-color': '#22C55E',
-        'border-width': 3,
-        'box-shadow': '0 0 10px #22C55E'
+        'border-width': 3
       }
     },
     // Selected node
@@ -435,8 +436,7 @@ function getAdvancedCytoscapeStyles() {
       selector: 'node.highlighted',
       style: {
         'border-color': '#F59E0B',
-        'border-width': 4,
-        'box-shadow': '0 0 15px #F59E0B'
+        'border-width': 4
       }
     },
     // Dimmed nodes
@@ -456,8 +456,8 @@ function getAdvancedCytoscapeStyles() {
         'target-arrow-shape': 'triangle',
         'curve-style': 'bezier',
         'opacity': 0.8,
-        'transition-property': 'line-color, width, opacity',
-        'transition-duration': '0.3s'
+        'transition-property': 'line-color, width, opacity' as any,
+        'transition-duration': 300 as any
       }
     },
     // Bidirectional edges

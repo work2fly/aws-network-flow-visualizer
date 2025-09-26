@@ -170,7 +170,7 @@ export const NetworkVisualization: React.FC<NetworkVisualizationProps> = ({
 };
 
 // Cytoscape styles configuration
-function getCytoscapeStyles() {
+function getCytoscapeStyles(): cytoscape.StylesheetStyle[] {
   return [
     // Node styles
     {
@@ -189,7 +189,7 @@ function getCytoscapeStyles() {
         'text-outline-width': 1,
         'width': 'mapData(trafficVolume, 0, 1000000, 30, 80)',
         'height': 'mapData(trafficVolume, 0, 1000000, 30, 80)',
-        'shape': 'data(shape)'
+        'shape': 'ellipse' as any
       }
     },
     // Node type specific styles

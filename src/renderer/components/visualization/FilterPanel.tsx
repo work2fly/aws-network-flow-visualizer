@@ -264,7 +264,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                       checked={filters.actions?.includes('ACCEPT') !== false}
                       onChange={(e) => {
                         const current = filters.actions || ['ACCEPT', 'REJECT'];
-                        const updated = e.target.checked
+                        const updated: ('ACCEPT' | 'REJECT')[] = e.target.checked
                           ? [...current.filter(a => a !== 'ACCEPT'), 'ACCEPT']
                           : current.filter(a => a !== 'ACCEPT');
                         onFiltersChange({ actions: updated });
@@ -279,7 +279,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                       checked={filters.actions?.includes('REJECT') !== false}
                       onChange={(e) => {
                         const current = filters.actions || ['ACCEPT', 'REJECT'];
-                        const updated = e.target.checked
+                        const updated: ('ACCEPT' | 'REJECT')[] = e.target.checked
                           ? [...current.filter(a => a !== 'REJECT'), 'REJECT']
                           : current.filter(a => a !== 'REJECT');
                         onFiltersChange({ actions: updated });

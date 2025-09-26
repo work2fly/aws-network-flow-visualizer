@@ -76,29 +76,29 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
     clearError();
   }, [clearError]);
 
-  const getAvailableFormats = useCallback(() => {
+  const getAvailableFormats = useCallback((): ('png' | 'svg' | 'csv' | 'json')[] => {
     switch (exportType) {
       case 'visualization':
-        return ['png', 'svg'] as const;
+        return ['png', 'svg'];
       case 'data':
-        return ['csv'] as const;
+        return ['csv'];
       case 'topology':
-        return ['json'] as const;
+        return ['json'];
       default:
-        return ['png'] as const;
+        return ['png'];
     }
   }, [exportType]);
 
-  const getDefaultFormat = useCallback(() => {
+  const getDefaultFormat = useCallback((): 'png' | 'svg' | 'csv' | 'json' => {
     switch (exportType) {
       case 'visualization':
-        return 'png' as const;
+        return 'png';
       case 'data':
-        return 'csv' as const;
+        return 'csv';
       case 'topology':
-        return 'json' as const;
+        return 'json';
       default:
-        return 'png' as const;
+        return 'png';
     }
   }, [exportType]);
 

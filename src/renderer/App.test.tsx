@@ -16,16 +16,15 @@ describe('App Component', () => {
     expect(heading).toBeInTheDocument();
   });
 
-  it('renders the welcome message', () => {
+  it('renders the navigation tabs', () => {
     render(
       <Provider store={store}>
         <App />
       </Provider>
     );
 
-    const welcomeText = screen.getByText(
-      /project structure has been set up successfully/i
-    );
-    expect(welcomeText).toBeInTheDocument();
+    // Check for navigation tabs that should exist
+    const authTab = screen.getByText('Authentication');
+    expect(authTab).toBeInTheDocument();
   });
 });

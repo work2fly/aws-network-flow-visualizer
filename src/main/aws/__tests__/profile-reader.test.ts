@@ -50,14 +50,14 @@ aws_access_key_id = AKIAI44QH8DHBEXAMPLE
 aws_secret_access_key = je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY
 `;
 
-      mockFs.existsSync.mockImplementation((filePath: string) => {
-        return filePath.includes('config') || filePath.includes('credentials');
+      mockFs.existsSync.mockImplementation((filePath: any) => {
+        return String(filePath).includes('config') || String(filePath).includes('credentials');
       });
 
-      mockFs.readFileSync.mockImplementation((filePath: string) => {
-        if (filePath.includes('config')) {
+      mockFs.readFileSync.mockImplementation((filePath: any) => {
+        if (String(filePath).includes('config')) {
           return configContent;
-        } else if (filePath.includes('credentials')) {
+        } else if (String(filePath).includes('credentials')) {
           return credentialsContent;
         }
         return '';
@@ -162,8 +162,8 @@ sso_role_name = TestRole
 
   describe('hasAWSConfig', () => {
     it('should return true when config file exists', () => {
-      mockFs.existsSync.mockImplementation((filePath: string) => {
-        return filePath.includes('config');
+      mockFs.existsSync.mockImplementation((filePath: any) => {
+        return String(filePath).includes('config');
       });
 
       const hasConfig = profileReader.hasAWSConfig();
@@ -172,8 +172,8 @@ sso_role_name = TestRole
     });
 
     it('should return true when credentials file exists', () => {
-      mockFs.existsSync.mockImplementation((filePath: string) => {
-        return filePath.includes('credentials');
+      mockFs.existsSync.mockImplementation((filePath: any) => {
+        return String(filePath).includes('credentials');
       });
 
       const hasConfig = profileReader.hasAWSConfig();
@@ -216,9 +216,24 @@ role_arn = arn:aws:iam::123456789012:role/TestRole
 source_profile = default
 region = us-east-1
 `;
+      const credentialsContent = `
+[default]
+aws_access_key_id = test
+aws_secret_access_key = test
+`;
 
-      mockFs.existsSync.mockReturnValue(true);
-      mockFs.readFileSync.mockReturnValue(configContent);
+      mockFs.existsSync.mockImplementation((filePath: any) => {
+        return String(filePath).includes('config') || String(filePath).includes('credentials');
+      });
+      
+      mockFs.readFileSync.mockImplementation((filePath: any) => {
+        if (String(filePath).includes('config')) {
+          return configContent;
+        } else if (String(filePath).includes('credentials')) {
+          return credentialsContent;
+        }
+        return '';
+      });
 
       const validation = await profileReader.validateProfile('role-test');
 
@@ -230,10 +245,10 @@ region = us-east-1
       const credentialsContent = `[creds-test]\naws_access_key_id = test\naws_secret_access_key = test`;
 
       mockFs.existsSync.mockReturnValue(true);
-      mockFs.readFileSync.mockImplementation((filePath: string) => {
-        if (filePath.includes('config')) {
+      mockFs.readFileSync.mockImplementation((filePath: any) => {
+        if (String(filePath).includes('config')) {
           return configContent;
-        } else if (filePath.includes('credentials')) {
+        } else if (String(filePath).includes('credentials')) {
           return credentialsContent;
         }
         return '';
@@ -261,9 +276,9 @@ region = us-east-1
 # Missing required SSO or role configuration
 `;
 
-      mockFs.existsSync.mockImplementation((filePath: string) => {
-        if (filePath.includes('config')) return true;
-        if (filePath.includes('credentials')) return false;
+      mockFs.existsSync.mockImplementation((filePath: any) => {
+        if (String(filePath).includes('config')) return true;
+        if (String(filePath).includes('credentials')) return false;
         return false;
       });
 
