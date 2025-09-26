@@ -6,6 +6,7 @@ import { setupSSOIPCHandlers, removeSSOIPCHandlers } from './ipc/sso-handlers';
 import { setupProfileIPCHandlers, removeProfileIPCHandlers } from './ipc/profile-handlers';
 import { registerNetworkHandlers } from './ipc/network-handlers';
 import { registerQueryHandlers } from './ipc/query-handlers';
+import { initializeSecurityHandlers, cleanupSecurityHandlers } from './ipc/security-handlers';
 
 // Security: Disable node integration and enable context isolation
 const createWindow = (): void => {
@@ -65,6 +66,7 @@ setupSSOIPCHandlers(credentialManager);
 setupProfileIPCHandlers(connectionManager);
 registerNetworkHandlers();
 registerQueryHandlers();
+initializeSecurityHandlers();
 
 // Basic IPC handlers
 ipcMain.handle('app-version', () => {
@@ -75,4 +77,5 @@ ipcMain.handle('app-version', () => {
 app.on('before-quit', () => {
   removeSSOIPCHandlers();
   removeProfileIPCHandlers();
+  cleanupSecurityHandlers();
 });

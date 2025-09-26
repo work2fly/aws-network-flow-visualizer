@@ -1,7 +1,8 @@
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { createCipher, createDecipher, randomBytes } from 'crypto';
+import { createCipherGCM, createDecipherGCM, randomBytes } from 'crypto';
 import { SSOTokens } from './sso-auth';
+import { SecureCredentialStorage } from './secure-credential-storage';
 
 // Safe import of electron app for test environment compatibility
 let electronApp: any = null;
@@ -32,6 +33,7 @@ export class SSOTokenStorage {
   private encryptionKey: string;
   private readonly STORAGE_FILE = 'sso-sessions.json';
   private readonly KEY_FILE = 'storage.key';
+  private secureStorage: SecureCredentialStorage;
 
   constructor(options: SSOTokenStorageOptions = {}) {
     // Use provided storage directory or default based on environment
@@ -44,6 +46,12 @@ export class SSOTokenStorage {
       this.storageDir = join(process.cwd(), '.test-aws-sso');
     }
     this.encryptionKey = options.encryptionKey || '';
+    
+    // Initialize secure storage for enhanced security
+    this.secureStorage = new SecureCredentialStorage({
+      serviceName: 'aws-network-flow-visualizer-sso',
+      storageDir: join(this.storageDir, 'secure')
+    });
   }
 
   /**
@@ -56,6 +64,9 @@ export class SSOTokenStorage {
 
       // Initialize or load encryption key
       await this.initializeEncryptionKey();
+      
+      // Initialize secure storage
+      await this.secureStorage.initialize();
     } catch (error) {
       throw new Error(`Failed to initialize SSO token storage: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -201,8 +212,25 @@ export class SSOTokenStorage {
   async clearAllSessions(): Promise<void> {
     try {
       await this.saveSessions({});
+      // Also clear from secure storage
+      await this.secureStorage.clearAllCredentials();
     } catch (error) {
       throw new Error(`Failed to clear SSO sessions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Perform secure cleanup of SSO tokens
+   */
+  async performSecureCleanup(): Promise<void> {
+    try {
+      // Clean up expired sessions
+      await this.cleanupExpiredSessions();
+      
+      // Perform secure memory cleanup
+      await this.secureStorage.performSecureCleanup();
+    } catch (error) {
+      console.warn('SSO secure cleanup failed:', error);
     }
   }
 
@@ -264,22 +292,42 @@ export class SSOTokenStorage {
   }
 
   /**
-   * Encrypt data using AES
+   * Encrypt data using AES-256-GCM
    */
   private encrypt(data: string): string {
-    const cipher = createCipher('aes-256-cbc', this.encryptionKey);
+    const iv = randomBytes(16);
+    const cipher = createCipherGCM('aes-256-gcm', Buffer.from(this.encryptionKey, 'hex'));
+    cipher.setAAD(Buffer.from('sso-token-storage', 'utf8'));
+    
     let encrypted = cipher.update(data, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    return encrypted;
+    
+    const authTag = cipher.getAuthTag();
+    
+    // Combine IV, auth tag, and encrypted data
+    return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
   }
 
   /**
-   * Decrypt data using AES
+   * Decrypt data using AES-256-GCM
    */
   private decrypt(encryptedData: string): string {
-    const decipher = createDecipher('aes-256-cbc', this.encryptionKey);
-    let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
+    const parts = encryptedData.split(':');
+    if (parts.length !== 3) {
+      throw new Error('Invalid encrypted data format');
+    }
+    
+    const iv = Buffer.from(parts[0], 'hex');
+    const authTag = Buffer.from(parts[1], 'hex');
+    const encrypted = parts[2];
+    
+    const decipher = createDecipherGCM('aes-256-gcm', Buffer.from(this.encryptionKey, 'hex'));
+    decipher.setAAD(Buffer.from('sso-token-storage', 'utf8'));
+    decipher.setAuthTag(authTag);
+    
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
+    
     return decrypted;
   }
 
