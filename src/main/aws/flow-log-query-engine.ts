@@ -52,7 +52,7 @@ export class FlowLogQueryEngine extends EventEmitter {
   private credentialManager: AWSCredentialManager;
   private queryCache: Map<string, CachedQueryResult> = new Map();
   private activeQueries: Map<string, Promise<any>> = new Map();
-  private config: Required<QueryEngineConfig>;
+  private config: Required<Omit<QueryEngineConfig, 'networkSecurityManager'>> & { networkSecurityManager?: any };
 
   constructor(config: QueryEngineConfig) {
     super();

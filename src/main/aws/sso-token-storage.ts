@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { createCipherGCM, createDecipherGCM, randomBytes } from 'crypto';
+import { createCipher, createDecipher, randomBytes } from 'crypto';
 import { SSOTokens } from './sso-auth';
 import { SecureCredentialStorage } from './secure-credential-storage';
 
@@ -292,42 +292,22 @@ export class SSOTokenStorage {
   }
 
   /**
-   * Encrypt data using AES-256-GCM
+   * Encrypt data using AES-256-CBC
    */
   private encrypt(data: string): string {
-    const iv = randomBytes(16);
-    const cipher = createCipherGCM('aes-256-gcm', Buffer.from(this.encryptionKey, 'hex'));
-    cipher.setAAD(Buffer.from('sso-token-storage', 'utf8'));
-    
+    const cipher = createCipher('aes-256-cbc', this.encryptionKey);
     let encrypted = cipher.update(data, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    
-    const authTag = cipher.getAuthTag();
-    
-    // Combine IV, auth tag, and encrypted data
-    return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
+    return encrypted;
   }
 
   /**
-   * Decrypt data using AES-256-GCM
+   * Decrypt data using AES-256-CBC
    */
   private decrypt(encryptedData: string): string {
-    const parts = encryptedData.split(':');
-    if (parts.length !== 3) {
-      throw new Error('Invalid encrypted data format');
-    }
-    
-    const iv = Buffer.from(parts[0], 'hex');
-    const authTag = Buffer.from(parts[1], 'hex');
-    const encrypted = parts[2];
-    
-    const decipher = createDecipherGCM('aes-256-gcm', Buffer.from(this.encryptionKey, 'hex'));
-    decipher.setAAD(Buffer.from('sso-token-storage', 'utf8'));
-    decipher.setAuthTag(authTag);
-    
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    const decipher = createDecipher('aes-256-cbc', this.encryptionKey);
+    let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
-    
     return decrypted;
   }
 

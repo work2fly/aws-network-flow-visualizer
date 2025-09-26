@@ -9,6 +9,7 @@ export interface AnonymizationOptions {
   anonymizeVpcIds?: boolean;
   anonymizeSubnetIds?: boolean;
   anonymizeSecurityGroupIds?: boolean;
+  anonymizeTransitGatewayIds?: boolean;
   anonymizeUsernames?: boolean;
   anonymizeRoleNames?: boolean;
   customPatterns?: Array<{
@@ -55,9 +56,9 @@ export class DataAnonymizer {
     vpnConnectionId: /\bvpn-[0-9a-f]{8,17}\b/g,
     vpnGatewayId: /\bvgw-[0-9a-f]{8,17}\b/g,
     
-    // IAM resources
-    roleName: /\b(?:arn:aws:iam::\d{12}:role\/)?([a-zA-Z0-9+=,.@_-]+)\b/g,
-    userName: /\b(?:arn:aws:iam::\d{12}:user\/)?([a-zA-Z0-9+=,.@_-]+)\b/g,
+    // IAM resources (more specific patterns - only match the role/user name part)
+    roleName: /(?<=arn:aws:iam::\d{12}:role\/)([a-zA-Z0-9+=,.@_-]+)\b/g,
+    userName: /(?<=arn:aws:iam::\d{12}:user\/)([a-zA-Z0-9+=,.@_-]+)\b/g,
     
     // Email addresses
     email: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
@@ -77,8 +78,9 @@ export class DataAnonymizer {
       anonymizeVpcIds: options.anonymizeVpcIds ?? true,
       anonymizeSubnetIds: options.anonymizeSubnetIds ?? true,
       anonymizeSecurityGroupIds: options.anonymizeSecurityGroupIds ?? true,
-      anonymizeUsernames: options.anonymizeUsernames ?? true,
-      anonymizeRoleNames: options.anonymizeRoleNames ?? true,
+      anonymizeTransitGatewayIds: options.anonymizeTransitGatewayIds ?? true,
+      anonymizeUsernames: options.anonymizeUsernames ?? false,
+      anonymizeRoleNames: options.anonymizeRoleNames ?? false,
       customPatterns: options.customPatterns || []
     };
   }
@@ -130,6 +132,10 @@ export class DataAnonymizer {
       anonymizedText = this.anonymizePattern(anonymizedText, this.AWS_PATTERNS.securityGroupId, 'sg');
     }
 
+    if (this.options.anonymizeTransitGatewayIds) {
+      anonymizedText = this.anonymizePattern(anonymizedText, this.AWS_PATTERNS.transitGatewayId, 'tgw');
+    }
+
     if (this.options.anonymizeUsernames) {
       anonymizedText = this.anonymizePattern(anonymizedText, this.AWS_PATTERNS.userName, 'user');
     }
@@ -139,11 +145,13 @@ export class DataAnonymizer {
     }
 
     // Apply custom patterns
-    for (const customPattern of this.options.customPatterns) {
-      if (typeof customPattern.replacement === 'string') {
-        anonymizedText = anonymizedText.replace(customPattern.pattern, customPattern.replacement);
-      } else {
-        anonymizedText = anonymizedText.replace(customPattern.pattern, customPattern.replacement);
+    if (this.options.customPatterns) {
+      for (const customPattern of this.options.customPatterns) {
+        if (typeof customPattern.replacement === 'string') {
+          anonymizedText = anonymizedText.replace(customPattern.pattern, customPattern.replacement);
+        } else {
+          anonymizedText = anonymizedText.replace(customPattern.pattern, customPattern.replacement);
+        }
       }
     }
 

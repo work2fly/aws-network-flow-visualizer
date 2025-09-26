@@ -501,9 +501,9 @@ export class AWSCredentialManager {
   private getCredentialType(): CredentialType | undefined {
     // This is a simplified implementation - in practice, you might want to track this more explicitly
     if (this.currentCredentials?.profile) {
-      return 'profile';
+      return 'profile' as CredentialType;
     }
-    return 'environment'; // Default fallback
+    return 'environment' as CredentialType; // Default fallback
   }
 
   /**
