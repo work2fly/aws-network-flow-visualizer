@@ -451,6 +451,22 @@ export interface QueryExecutionResult {
   results?: FlowLogRecord[];
   statistics?: QueryProgress;
   error?: string;
+  errorDetails?: {
+    code?: string;
+    name?: string;
+    requestId?: string;
+    region?: string;
+    originalMessage?: string;
+  };
+  metadata?: {
+    recordCount?: number;
+    queryTime?: Date;
+    logGroup?: string;
+    timeRange?: {
+      start: Date;
+      end: Date;
+    };
+  };
 }
 
 export interface VPCFlowLogFilters {

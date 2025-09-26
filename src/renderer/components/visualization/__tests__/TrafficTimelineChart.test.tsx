@@ -4,76 +4,54 @@ import '@testing-library/jest-dom';
 import { TrafficTimelineChart } from '../TrafficTimelineChart';
 import { FlowLogRecord, TrafficAnomaly } from '@shared/types';
 
-// Mock D3
+// Mock D3.js completely to prevent SVG rendering issues in test environment
 jest.mock('d3', () => ({
   select: jest.fn(() => ({
-    selectAll: jest.fn(() => ({
-      remove: jest.fn(),
-      data: jest.fn(() => ({
-        enter: jest.fn(() => ({
-          append: jest.fn(() => ({
-            attr: jest.fn(() => ({
-              attr: jest.fn(() => ({
-                attr: jest.fn(() => ({
-                  style: jest.fn(() => ({
-                    on: jest.fn()
-                  }))
-                }))
-              }))
-            }))
-          }))
-        }))
-      }))
-    })),
     append: jest.fn(() => ({
-      attr: jest.fn(() => ({
-        attr: jest.fn(() => ({
-          append: jest.fn(() => ({
-            attr: jest.fn()
-          }))
-        }))
-      }))
-    }))
+      append: jest.fn(() => ({
+        attr: jest.fn(() => ({ attr: jest.fn(() => ({ attr: jest.fn(() => ({ attr: jest.fn() })) })) })),
+        style: jest.fn(() => ({ style: jest.fn() })),
+        text: jest.fn(),
+        call: jest.fn(),
+        datum: jest.fn(() => ({ attr: jest.fn() }))
+      })),
+      attr: jest.fn(() => ({ attr: jest.fn(() => ({ attr: jest.fn(() => ({ attr: jest.fn() })) })) })),
+      style: jest.fn(() => ({ style: jest.fn() })),
+      datum: jest.fn(() => ({ attr: jest.fn() }))
+    })),
+    selectAll: jest.fn(() => ({ remove: jest.fn() })),
+    select: jest.fn(() => ({ call: jest.fn() }))
   })),
   scaleTime: jest.fn(() => ({
-    domain: jest.fn(() => ({
-      range: jest.fn()
-    }))
+    domain: jest.fn(() => ({ range: jest.fn() })),
+    range: jest.fn()
   })),
   scaleLinear: jest.fn(() => ({
-    domain: jest.fn(() => ({
-      nice: jest.fn(() => ({
-        range: jest.fn()
-      }))
-    }))
-  })),
-  line: jest.fn(() => ({
-    x: jest.fn(() => ({
-      y: jest.fn(() => ({
-        curve: jest.fn()
-      }))
-    }))
-  })),
-  area: jest.fn(() => ({
-    x: jest.fn(() => ({
-      y0: jest.fn(() => ({
-        y1: jest.fn(() => ({
-          curve: jest.fn()
-        }))
-      }))
-    }))
+    domain: jest.fn(() => ({ nice: jest.fn(() => ({ range: jest.fn() })) })),
+    nice: jest.fn(() => ({ range: jest.fn() })),
+    range: jest.fn()
   })),
   axisBottom: jest.fn(),
   axisLeft: jest.fn(),
-  extent: jest.fn(() => [new Date(), new Date()]),
-  max: jest.fn(() => 1000),
-  curveMonotoneX: 'curveMonotoneX',
+  area: jest.fn(() => ({
+    x: jest.fn(() => ({ y0: jest.fn(() => ({ y1: jest.fn(() => ({ curve: jest.fn() })) })) })),
+    y0: jest.fn(),
+    y1: jest.fn(),
+    curve: jest.fn()
+  })),
+  line: jest.fn(() => ({
+    x: jest.fn(() => ({ y: jest.fn(() => ({ curve: jest.fn() })) })),
+    y: jest.fn(),
+    curve: jest.fn()
+  })),
   timeFormat: jest.fn(() => jest.fn()),
   brushX: jest.fn(() => ({
-    extent: jest.fn(() => ({
-      on: jest.fn()
-    }))
-  }))
+    extent: jest.fn(() => ({ on: jest.fn() })),
+    clear: jest.fn()
+  })),
+  extent: jest.fn(() => [new Date(), new Date()]),
+  max: jest.fn(() => 1000),
+  curveMonotoneX: jest.fn()
 }));
 
 const mockFlowLogData: FlowLogRecord[] = [

@@ -73,7 +73,8 @@ const mockTopology: NetworkTopology = {
         sourceToTargetBytes: 600000,
         targetToSourceBytes: 400000,
         sourceToTargetPackets: 3000,
-        targetToSourcePackets: 2000
+        targetToSourcePackets: 2000,
+        protocolDistribution: []
       },
       flowRecords: [],
       properties: {

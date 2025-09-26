@@ -38,6 +38,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     hasConfig: () => ipcRenderer.invoke('aws:has-config'),
     areCredentialsExpired: () => ipcRenderer.invoke('aws:are-credentials-expired'),
     autoDiscover: () => ipcRenderer.invoke('aws:auto-discover'),
+
+    // Flow log queries
+    queryVPCFlowLogs: (params: any) => ipcRenderer.invoke('aws:query-vpc-flow-logs', params),
+    queryTGWFlowLogs: (params: any) => ipcRenderer.invoke('aws:query-tgw-flow-logs', params),
+  },
+
+  // Network topology and analysis methods
+  network: {
+    buildTopology: (flowLogs: any[]) => ipcRenderer.invoke('network:build-topology', flowLogs),
+    analyzeTrafficPatterns: (params: any) => ipcRenderer.invoke('network:analyze-traffic-patterns', params),
   },
 });
 
@@ -75,6 +85,14 @@ declare global {
         hasConfig: () => Promise<boolean>;
         areCredentialsExpired: () => Promise<boolean>;
         autoDiscover: () => Promise<{ success: boolean; error?: string }>;
+
+        // Flow log queries
+        queryVPCFlowLogs: (params: any) => Promise<any>;
+        queryTGWFlowLogs: (params: any) => Promise<any>;
+      };
+      network: {
+        buildTopology: (flowLogs: any[]) => Promise<any>;
+        analyzeTrafficPatterns: (params: any) => Promise<any>;
       };
     };
   }

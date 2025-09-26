@@ -105,10 +105,15 @@ const mockTopology: NetworkTopology = {
         sourceToTargetBytes: 1024,
         targetToSourceBytes: 512,
         sourceToTargetPackets: 10,
-        targetToSourcePackets: 5
+        targetToSourcePackets: 5,
+        protocolDistribution: []
       },
       flowRecords: mockFlowLogs,
-      properties: { bidirectional: true },
+      properties: { 
+        bidirectional: true,
+        protocols: ['TCP'],
+        ports: [80, 443]
+      },
       metadata: { isActive: true }
     }
   ],

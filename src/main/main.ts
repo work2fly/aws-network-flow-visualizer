@@ -4,6 +4,8 @@ import { AWSCredentialManager } from './aws/credential-manager';
 import { AWSConnectionManager } from './aws/connection-manager';
 import { setupSSOIPCHandlers, removeSSOIPCHandlers } from './ipc/sso-handlers';
 import { setupProfileIPCHandlers, removeProfileIPCHandlers } from './ipc/profile-handlers';
+import { registerNetworkHandlers } from './ipc/network-handlers';
+import { registerQueryHandlers } from './ipc/query-handlers';
 
 // Security: Disable node integration and enable context isolation
 const createWindow = (): void => {
@@ -61,6 +63,8 @@ const connectionManager = new AWSConnectionManager();
 // Setup IPC handlers
 setupSSOIPCHandlers(credentialManager);
 setupProfileIPCHandlers(connectionManager);
+registerNetworkHandlers();
+registerQueryHandlers();
 
 // Basic IPC handlers
 ipcMain.handle('app-version', () => {

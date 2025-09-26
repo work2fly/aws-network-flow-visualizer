@@ -33,6 +33,14 @@ declare global {
         hasConfig: () => Promise<boolean>;
         areCredentialsExpired: () => Promise<boolean>;
         autoDiscover: () => Promise<{ success: boolean; error?: string }>;
+
+        // Flow log queries
+        queryVPCFlowLogs: (params: any) => Promise<any>;
+        queryTGWFlowLogs: (params: any) => Promise<any>;
+      };
+      network: {
+        buildTopology: (flowLogs: any[]) => Promise<any>;
+        analyzeTrafficPatterns: (params: any) => Promise<any>;
       };
     };
   }

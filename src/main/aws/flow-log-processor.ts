@@ -102,6 +102,7 @@ export class FlowLogProcessor {
         uniqueDestinationIPs: 0,
         topPorts: [],
         timeRange: { start: new Date(), end: new Date() },
+        protocolDistribution: [],
       };
     }
 
@@ -113,6 +114,7 @@ export class FlowLogProcessor {
     const sourceIPs = new Set<string>();
     const destinationIPs = new Set<string>();
     const portStats = new Map<string, { port: number; protocol: string; connections: number; bytes: number }>();
+    const protocolStats = new Map<string, { bytes: number; packets: number; connections: number }>();
 
     let minTimestamp = records[0].timestamp;
     let maxTimestamp = records[0].timestamp;
@@ -146,6 +148,19 @@ export class FlowLogProcessor {
       portStat.connections++;
       portStat.bytes += record.bytes;
 
+      // Track protocol statistics
+      if (!protocolStats.has(record.protocol)) {
+        protocolStats.set(record.protocol, {
+          bytes: 0,
+          packets: 0,
+          connections: 0,
+        });
+      }
+      const protocolStat = protocolStats.get(record.protocol)!;
+      protocolStat.bytes += record.bytes;
+      protocolStat.packets += record.packets;
+      protocolStat.connections++;
+
       // Track time range
       if (record.timestamp < minTimestamp) {
         minTimestamp = record.timestamp;
@@ -166,6 +181,17 @@ export class FlowLogProcessor {
         bytes: stat.bytes,
       }));
 
+    // Calculate protocol distribution
+    const protocolDistribution = Array.from(protocolStats.entries())
+      .map(([protocol, stats]) => ({
+        protocol,
+        bytes: stats.bytes,
+        packets: stats.packets,
+        connections: stats.connections,
+        percentage: totalBytes > 0 ? (stats.bytes / totalBytes) * 100 : 0,
+      }))
+      .sort((a, b) => b.bytes - a.bytes);
+
     return {
       totalBytes,
       totalPackets,
@@ -175,6 +201,7 @@ export class FlowLogProcessor {
       uniqueDestinationIPs: destinationIPs.size,
       topPorts,
       timeRange: { start: minTimestamp, end: maxTimestamp },
+      protocolDistribution,
     };
   }
 

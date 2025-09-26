@@ -336,4 +336,27 @@ export class CloudWatchInsightsClient {
   getRegion(): string {
     return this.client.config.region as string;
   }
+
+  /**
+   * Get available log groups
+   */
+  async getLogGroups(namePrefix?: string, limit?: number): Promise<Array<{ name: string; creationTime: Date; storedBytes: number }>> {
+    try {
+      const command = new DescribeLogGroupsCommand({
+        logGroupNamePrefix: namePrefix,
+        limit: limit || 50
+      });
+
+      const response = await this.client.send(command);
+      
+      return (response.logGroups || []).map(logGroup => ({
+        name: logGroup.logGroupName || '',
+        creationTime: logGroup.creationTime ? new Date(logGroup.creationTime) : new Date(),
+        storedBytes: logGroup.storedBytes || 0
+      }));
+    } catch (error) {
+      console.error('Failed to get log groups:', error);
+      throw error;
+    }
+  }
 }

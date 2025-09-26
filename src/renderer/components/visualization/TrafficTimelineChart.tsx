@@ -195,7 +195,7 @@ export const TrafficTimelineChart: React.FC<TrafficTimelineChartProps> = ({
         .attr('y', 0)
         .attr('width', d => Math.max(xScale(d.timeRange.end) - xScale(d.timeRange.start), 2))
         .attr('height', chartHeight)
-        .style('fill', getAnomalySeverityColor(d => d.severity))
+        .style('fill', (d: any) => getAnomalySeverityColor(d.severity))
         .style('opacity', 0.3)
         .style('cursor', 'pointer')
         .on('click', (event, d) => onAnomalyClick?.(d))
@@ -207,7 +207,9 @@ export const TrafficTimelineChart: React.FC<TrafficTimelineChartProps> = ({
 
     // Add axes
     const xAxis = d3.axisBottom(xScale)
-      .tickFormat(d3.timeFormat('%H:%M'));
+      .tickFormat((domainValue: Date | d3.NumberValue) => {
+        return d3.timeFormat('%H:%M')(domainValue as Date);
+      });
 
     const yAxis = d3.axisLeft(yScale)
       .tickFormat(d => formatMetricValue(d as number, selectedMetric));
@@ -215,7 +217,7 @@ export const TrafficTimelineChart: React.FC<TrafficTimelineChartProps> = ({
     g.append('g')
       .attr('class', 'x-axis')
       .attr('transform', `translate(0,${chartHeight})`)
-      .call(xAxis)
+      .call(xAxis as any)
       .selectAll('text')
       .style('font-size', '12px');
 
@@ -374,7 +376,8 @@ export const TrafficTimelineChart: React.FC<TrafficTimelineChartProps> = ({
           <button
             onClick={() => {
               setBrushSelection(null);
-              d3.select(svgRef.current).select('.brush').call(d3.brushX().clear);
+              const brushSelection = d3.select(svgRef.current).select('.brush');
+              brushSelection.call(d3.brushX().clear as any);
             }}
             className="ml-2 text-blue-600 hover:text-blue-800 underline"
           >
@@ -414,7 +417,7 @@ export const TrafficTimelineChart: React.FC<TrafficTimelineChartProps> = ({
 
 // Utility functions
 function getMetricColor(metric: keyof TimelineDataPoint): string {
-  const colors = {
+  const colors: Record<keyof Omit<TimelineDataPoint, 'timestamp'>, string> = {
     totalBytes: '#3B82F6',
     totalPackets: '#10B981',
     acceptedConnections: '#22C55E',
@@ -422,11 +425,11 @@ function getMetricColor(metric: keyof TimelineDataPoint): string {
     uniqueSourceIPs: '#8B5CF6',
     uniqueDestinationIPs: '#F59E0B'
   };
-  return colors[metric] || '#6B7280';
+  return colors[metric as keyof typeof colors] || '#6B7280';
 }
 
 function getMetricLabel(metric: keyof TimelineDataPoint): string {
-  const labels = {
+  const labels: Record<keyof Omit<TimelineDataPoint, 'timestamp'>, string> = {
     totalBytes: 'Traffic Volume (Bytes)',
     totalPackets: 'Packet Count',
     acceptedConnections: 'Accepted Connections',
@@ -434,7 +437,7 @@ function getMetricLabel(metric: keyof TimelineDataPoint): string {
     uniqueSourceIPs: 'Unique Source IPs',
     uniqueDestinationIPs: 'Unique Destination IPs'
   };
-  return labels[metric] || metric;
+  return labels[metric as keyof typeof labels] || String(metric);
 }
 
 function formatMetricValue(value: number, metric: keyof TimelineDataPoint): string {

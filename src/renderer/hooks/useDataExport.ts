@@ -59,10 +59,11 @@ export function useDataExport({
       // Apply port filters
       if (appliedFilters.sourcePorts && appliedFilters.sourcePorts.length > 0) {
         const portMatches = appliedFilters.sourcePorts.some(portFilter => {
-          if (typeof portFilter === 'object' && 'port' in portFilter) {
+          if (typeof portFilter === 'object' && portFilter !== null && 'port' in portFilter) {
             return portFilter.port === record.sourcePort;
           }
-          return portFilter === record.sourcePort;
+          // Handle legacy number format
+          return Number(portFilter) === record.sourcePort;
         });
         if (!portMatches) {
           return false;
@@ -71,10 +72,11 @@ export function useDataExport({
 
       if (appliedFilters.destinationPorts && appliedFilters.destinationPorts.length > 0) {
         const portMatches = appliedFilters.destinationPorts.some(portFilter => {
-          if (typeof portFilter === 'object' && 'port' in portFilter) {
+          if (typeof portFilter === 'object' && portFilter !== null && 'port' in portFilter) {
             return portFilter.port === record.destinationPort;
           }
-          return portFilter === record.destinationPort;
+          // Handle legacy number format
+          return Number(portFilter) === record.destinationPort;
         });
         if (!portMatches) {
           return false;
