@@ -2,6 +2,7 @@ import { ipcMain } from 'electron';
 import { FlowLogQueryEngine } from '../aws/flow-log-query-engine';
 import { AWSCredentialManager } from '../aws/credential-manager';
 import { VPCFlowLogFilters, TGWFlowLogFilters, QueryExecutionResult } from '../../shared/types';
+import { getNetworkSecurityManager } from './security-handlers';
 
 // Create a shared credential manager instance
 const credentialManager = new AWSCredentialManager();
@@ -117,7 +118,8 @@ export function registerQueryHandlers() {
 
       const queryEngine = new FlowLogQueryEngine({
         credentialManager,
-        region: connectionStatus.region || 'us-east-1'
+        region: connectionStatus.region || 'us-east-1',
+        networkSecurityManager: getNetworkSecurityManager() || undefined
       });
       
       // Convert single logGroupName to array for the query builder
@@ -180,7 +182,8 @@ export function registerQueryHandlers() {
 
       const queryEngine = new FlowLogQueryEngine({
         credentialManager,
-        region: connectionStatus.region || 'us-east-1'
+        region: connectionStatus.region || 'us-east-1',
+        networkSecurityManager: getNetworkSecurityManager() || undefined
       });
       
       // Convert single logGroupName to array for the query builder

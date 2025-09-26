@@ -10,10 +10,12 @@ import {
 } from '@aws-sdk/client-cloudwatch-logs';
 import { CredentialProvider } from '@aws-sdk/types';
 import { FlowLogRecord, QueryExecutionResult, QueryProgress } from '../../shared/types';
+import { NetworkSecurityManager } from './network-security-manager';
 
 export interface CloudWatchInsightsConfig {
   region: string;
   credentials: CredentialProvider;
+  networkSecurityManager?: NetworkSecurityManager;
 }
 
 export interface QueryParams {
@@ -37,18 +39,32 @@ export interface QueryExecution {
  */
 export class CloudWatchInsightsClient {
   private client: CloudWatchLogsClient;
+  private networkSecurityManager?: NetworkSecurityManager;
 
   constructor(config: CloudWatchInsightsConfig) {
-    this.client = new CloudWatchLogsClient({
+    this.networkSecurityManager = config.networkSecurityManager;
+    
+    const clientConfig: any = {
       region: config.region,
       credentials: config.credentials,
-    });
+    };
+
+    // Add secure HTTPS agent if network security manager is provided
+    if (this.networkSecurityManager) {
+      clientConfig.requestHandler = {
+        httpsAgent: this.networkSecurityManager.createSecureAgent()
+      };
+    }
+
+    this.client = new CloudWatchLogsClient(clientConfig);
   }
 
   /**
    * Start a CloudWatch Insights query
    */
   async startQuery(params: QueryParams): Promise<string> {
+    const startTime = Date.now();
+    
     try {
       const command = new StartQueryCommand({
         logGroupNames: params.logGroupNames,
@@ -60,12 +76,34 @@ export class CloudWatchInsightsClient {
 
       const response = await this.client.send(command);
       
+      // Log network request for security auditing
+      if (this.networkSecurityManager) {
+        await this.networkSecurityManager.logNetworkRequest({
+          method: 'POST',
+          url: `https://logs.${this.client.config.region}.amazonaws.com/`,
+          headers: { 'X-Amz-Target': 'Logs_20140328.StartQuery' },
+          statusCode: 200,
+          responseTime: Date.now() - startTime
+        });
+      }
+      
       if (!response.queryId) {
         throw new Error('Failed to start query - no query ID returned');
       }
 
       return response.queryId;
     } catch (error) {
+      // Log failed request
+      if (this.networkSecurityManager) {
+        await this.networkSecurityManager.logNetworkRequest({
+          method: 'POST',
+          url: `https://logs.${this.client.config.region}.amazonaws.com/`,
+          headers: { 'X-Amz-Target': 'Logs_20140328.StartQuery' },
+          responseTime: Date.now() - startTime,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+      
       throw new Error(`Failed to start CloudWatch Insights query: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

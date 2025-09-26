@@ -49,6 +49,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
     buildTopology: (flowLogs: any[]) => ipcRenderer.invoke('network:build-topology', flowLogs),
     analyzeTrafficPatterns: (params: any) => ipcRenderer.invoke('network:analyze-traffic-patterns', params),
   },
+
+  // Data anonymization methods
+  anonymizeData: (data: any, options?: any) => ipcRenderer.invoke('anonymize:data', data, options),
+  anonymizeFlowLogs: (flowLogs: any[], options?: any) => ipcRenderer.invoke('anonymize:flow-logs', flowLogs, options),
+  anonymizeTopology: (topology: any, options?: any) => ipcRenderer.invoke('anonymize:topology', topology, options),
+
+  // Network security methods
+  networkSecurity: {
+    getRequestLogs: (options?: any) => ipcRenderer.invoke('network-security:get-request-logs', options),
+    clearRequestLogs: () => ipcRenderer.invoke('network-security:clear-request-logs'),
+    exportRequestLogs: (format: 'json' | 'csv') => ipcRenderer.invoke('network-security:export-request-logs', format),
+    getCertificatePins: () => ipcRenderer.invoke('network-security:get-certificate-pins'),
+    addCertificatePin: (config: any) => ipcRenderer.invoke('network-security:add-certificate-pin', config),
+    removeCertificatePin: (hostname: string) => ipcRenderer.invoke('network-security:remove-certificate-pin', hostname),
+  },
 });
 
 // Type definitions for the exposed API
@@ -93,6 +108,21 @@ declare global {
       network: {
         buildTopology: (flowLogs: any[]) => Promise<any>;
         analyzeTrafficPatterns: (params: any) => Promise<any>;
+      };
+      
+      // Data anonymization methods
+      anonymizeData: (data: any, options?: any) => Promise<any>;
+      anonymizeFlowLogs: (flowLogs: any[], options?: any) => Promise<any[]>;
+      anonymizeTopology: (topology: any, options?: any) => Promise<any>;
+
+      // Network security methods
+      networkSecurity: {
+        getRequestLogs: (options?: any) => Promise<any[]>;
+        clearRequestLogs: () => Promise<void>;
+        exportRequestLogs: (format: 'json' | 'csv') => Promise<string>;
+        getCertificatePins: () => Promise<any[]>;
+        addCertificatePin: (config: any) => Promise<void>;
+        removeCertificatePin: (hostname: string) => Promise<void>;
       };
     };
   }

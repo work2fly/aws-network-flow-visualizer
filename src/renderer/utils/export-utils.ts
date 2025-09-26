@@ -1,5 +1,16 @@
 import { NetworkTopology, FlowLogRecord, FlowFilters } from '@shared/types';
 
+// Import anonymization functionality from main process
+declare global {
+  interface Window {
+    electronAPI: {
+      anonymizeData: (data: any, options?: any) => Promise<any>;
+      anonymizeFlowLogs: (flowLogs: FlowLogRecord[], options?: any) => Promise<FlowLogRecord[]>;
+      anonymizeTopology: (topology: NetworkTopology, options?: any) => Promise<NetworkTopology>;
+    };
+  }
+}
+
 export interface ExportOptions {
   format: 'png' | 'svg' | 'csv' | 'json';
   filename?: string;
@@ -8,6 +19,18 @@ export interface ExportOptions {
   height?: number;
   backgroundColor?: string;
   includeMetadata?: boolean;
+  anonymize?: boolean; // Enable data anonymization
+  anonymizationOptions?: {
+    preserveStructure?: boolean;
+    anonymizeIPs?: boolean;
+    anonymizeAccountIds?: boolean;
+    anonymizeInstanceIds?: boolean;
+    anonymizeVpcIds?: boolean;
+    anonymizeSubnetIds?: boolean;
+    anonymizeSecurityGroupIds?: boolean;
+    anonymizeUsernames?: boolean;
+    anonymizeRoleNames?: boolean;
+  };
 }
 
 export interface ExportProgress {
@@ -103,7 +126,7 @@ export async function exportFlowLogData(
   },
   onProgress?: ExportProgressCallback
 ): Promise<Blob> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     try {
       onProgress?.({
         stage: 'preparing',
@@ -115,28 +138,49 @@ export async function exportFlowLogData(
         throw new Error('No flow log data to export');
       }
 
+      let processedFlowLogs = flowLogs;
+
+      // Apply anonymization if requested
+      if (options.anonymize && window.electronAPI?.anonymizeFlowLogs) {
+        onProgress?.({
+          stage: 'processing',
+          progress: 15,
+          message: 'Anonymizing sensitive data...'
+        });
+
+        try {
+          processedFlowLogs = await window.electronAPI.anonymizeFlowLogs(
+            flowLogs,
+            options.anonymizationOptions
+          );
+        } catch (error) {
+          console.warn('Failed to anonymize flow logs:', error);
+          // Continue with original data if anonymization fails
+        }
+      }
+
       const batchSize = options.batchSize || 10000;
-      const totalBatches = Math.ceil(flowLogs.length / batchSize);
+      const totalBatches = Math.ceil(processedFlowLogs.length / batchSize);
 
       onProgress?.({
         stage: 'processing',
         progress: 20,
-        message: `Processing ${flowLogs.length} records in ${totalBatches} batches...`
+        message: `Processing ${processedFlowLogs.length} records in ${totalBatches} batches...`
       });
 
       let csvContent = '';
       
       // Generate header if requested
       if (options.includeHeaders !== false) {
-        const headers = generateCSVHeaders(flowLogs, options);
+        const headers = generateCSVHeaders(processedFlowLogs, options);
         csvContent += headers + '\n';
       }
 
       // Process data in batches
       for (let i = 0; i < totalBatches; i++) {
         const start = i * batchSize;
-        const end = Math.min(start + batchSize, flowLogs.length);
-        const batch = flowLogs.slice(start, end);
+        const end = Math.min(start + batchSize, processedFlowLogs.length);
+        const batch = processedFlowLogs.slice(start, end);
 
         const batchContent = generateCSVContent(batch, options);
         csvContent += batchContent;
@@ -169,7 +213,7 @@ export async function exportFlowLogData(
       onProgress?.({
         stage: 'complete',
         progress: 100,
-        message: `CSV export complete (${flowLogs.length} records)`
+        message: `CSV export complete (${processedFlowLogs.length} records)${options.anonymize ? ' - anonymized' : ''}`
       });
 
       resolve(blob);
@@ -194,7 +238,7 @@ export async function exportTopologyData(
   options: ExportOptions,
   onProgress?: ExportProgressCallback
 ): Promise<Blob> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     try {
       onProgress?.({
         stage: 'preparing',
@@ -206,15 +250,36 @@ export async function exportTopologyData(
         throw new Error('No topology data to export');
       }
 
+      let processedTopology = topology;
+
+      // Apply anonymization if requested
+      if (options.anonymize && window.electronAPI?.anonymizeTopology) {
+        onProgress?.({
+          stage: 'processing',
+          progress: 40,
+          message: 'Anonymizing sensitive data...'
+        });
+
+        try {
+          processedTopology = await window.electronAPI.anonymizeTopology(
+            topology,
+            options.anonymizationOptions
+          );
+        } catch (error) {
+          console.warn('Failed to anonymize topology:', error);
+          // Continue with original data if anonymization fails
+        }
+      }
+
       onProgress?.({
         stage: 'processing',
         progress: 60,
         message: 'Serializing topology...'
       });
 
-      const exportData = options.includeMetadata ? topology : {
-        nodes: topology.nodes,
-        edges: topology.edges
+      const exportData = options.includeMetadata ? processedTopology : {
+        nodes: processedTopology.nodes,
+        edges: processedTopology.edges
       };
 
       const jsonContent = JSON.stringify(exportData, null, 2);
@@ -230,7 +295,7 @@ export async function exportTopologyData(
       onProgress?.({
         stage: 'complete',
         progress: 100,
-        message: 'JSON export complete'
+        message: `JSON export complete${options.anonymize ? ' - anonymized' : ''}`
       });
 
       resolve(blob);

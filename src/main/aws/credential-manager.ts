@@ -23,6 +23,7 @@ import {
 } from '../../shared/types';
 import { SSOAuthService, SSOAuthConfig, SSOTokens } from './sso-auth';
 import { SSOTokenStorage } from './sso-token-storage';
+import { SecureCredentialStorage, SecureCredentialData } from './secure-credential-storage';
 
 export class AWSCredentialManager {
   private currentCredentials: AWSCredentials | null = null;
@@ -30,9 +31,11 @@ export class AWSCredentialManager {
   private stsClient: STSClient | null = null;
   private ssoAuthService: SSOAuthService | null = null;
   private ssoTokenStorage: SSOTokenStorage;
+  private secureStorage: SecureCredentialStorage;
 
   constructor() {
     this.ssoTokenStorage = new SSOTokenStorage();
+    this.secureStorage = new SecureCredentialStorage();
   }
 
   /**
@@ -108,10 +111,11 @@ export class AWSCredentialManager {
   }
 
   /**
-   * Initialize SSO token storage
+   * Initialize SSO token storage and secure credential storage
    */
   async initializeSSO(): Promise<void> {
     await this.ssoTokenStorage.initialize();
+    await this.secureStorage.initialize();
   }
 
   /**
@@ -593,6 +597,102 @@ export class AWSCredentialManager {
         valid: false,
         error: `Credential refresh failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       };
+    }
+  }
+
+  /**
+   * Store credentials securely in OS keychain
+   */
+  async storeCredentialsSecurely(accountKey: string, credentials: AWSCredentials, credentialType: CredentialType): Promise<void> {
+    try {
+      const secureData: SecureCredentialData = {
+        region: credentials.region,
+        profileName: credentials.profile,
+        credentialType,
+        createdAt: new Date(),
+        lastUsed: new Date(),
+        expiresAt: credentials.expiration
+      };
+
+      await this.secureStorage.storeCredentials(accountKey, secureData);
+    } catch (error) {
+      throw new Error(`Failed to store credentials securely: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Load credentials securely from OS keychain
+   */
+  async loadCredentialsSecurely(accountKey: string): Promise<SecureCredentialData | null> {
+    try {
+      return await this.secureStorage.getCredentials(accountKey);
+    } catch (error) {
+      console.warn(`Failed to load secure credentials for ${accountKey}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * List all securely stored credential accounts
+   */
+  async listSecureCredentialAccounts(): Promise<Array<{
+    accountKey: string;
+    credentialType: string;
+    region?: string;
+    profileName?: string;
+    expiresAt?: Date;
+    lastUsed: Date;
+    isExpired: boolean;
+  }>> {
+    try {
+      return await this.secureStorage.listCredentialAccounts();
+    } catch (error) {
+      console.warn('Failed to list secure credential accounts:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Delete securely stored credentials
+   */
+  async deleteSecureCredentials(accountKey: string): Promise<void> {
+    try {
+      await this.secureStorage.deleteCredentials(accountKey);
+    } catch (error) {
+      console.warn(`Failed to delete secure credentials for ${accountKey}:`, error);
+    }
+  }
+
+  /**
+   * Clean up expired credentials and perform secure memory cleanup
+   */
+  async performSecureCleanup(): Promise<void> {
+    try {
+      // Clean up expired credentials
+      await this.secureStorage.cleanupExpiredCredentials();
+      
+      // Perform secure memory cleanup
+      await this.secureStorage.performSecureCleanup();
+      
+      // Clear current credentials if expired
+      if (this.areCredentialsExpired()) {
+        this.clearCredentials();
+      }
+    } catch (error) {
+      console.warn('Secure cleanup failed:', error);
+    }
+  }
+
+  /**
+   * Clear all stored credentials (for logout/reset)
+   */
+  async clearAllStoredCredentials(): Promise<void> {
+    try {
+      await this.secureStorage.clearAllCredentials();
+      await this.ssoTokenStorage.clearAllSessions();
+      this.clearCredentials();
+    } catch (error) {
+      throw new Error(`Failed to clear all stored credentials: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }

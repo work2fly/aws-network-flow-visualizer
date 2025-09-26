@@ -17,6 +17,7 @@ export interface QueryEngineConfig {
   cacheEnabled?: boolean;
   cacheTTLMs?: number;
   maxConcurrentQueries?: number;
+  networkSecurityManager?: any; // NetworkSecurityManager type
 }
 
 export interface QueryExecutionOptions {
@@ -84,6 +85,7 @@ export class FlowLogQueryEngine extends EventEmitter {
     this.client = new CloudWatchInsightsClient({
       region: this.config.region,
       credentials: stsClient.config.credentials!,
+      networkSecurityManager: this.config.networkSecurityManager,
     });
 
     this.vpcQueryBuilder = new VPCFlowLogQueryBuilder(this.client);
