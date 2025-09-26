@@ -39,5 +39,6 @@ module.exports = {
   },
   externals: {
     'electron': 'commonjs electron',
+    'keytar': 'commonjs keytar',
   },
 };

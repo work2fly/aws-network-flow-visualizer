@@ -393,6 +393,8 @@ export interface SSOConfig {
   accountId?: string;
   roleName?: string;
   sessionName?: string;
+  clientId?: string;
+  clientSecret?: string;
 }
 
 export interface ProfileConfig {

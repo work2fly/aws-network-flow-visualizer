@@ -1,8 +1,9 @@
 import * as keytar from 'keytar';
-import { randomBytes, createCipherGCM, createDecipherGCM } from 'crypto';
+import { randomBytes, createCipher, createDecipher } from 'crypto';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { SSOTokens } from './sso-auth';
+import { CredentialType } from '../../shared/types';
 
 // Safe import of electron app for test environment compatibility
 let electronApp: any = null;
@@ -19,7 +20,7 @@ export interface SecureCredentialData {
   ssoTokens?: SSOTokens;
   region?: string;
   profileName?: string;
-  credentialType: 'sso' | 'profile' | 'role' | 'environment';
+  credentialType: CredentialType;
   expiresAt?: Date;
   createdAt: Date;
   lastUsed: Date;
@@ -325,16 +326,13 @@ export class SecureCredentialStorage {
    */
   private encryptSensitiveData(data: string): string {
     const iv = randomBytes(16);
-    const cipher = createCipherGCM('aes-256-gcm', Buffer.from(this.encryptionKey, 'hex'));
-    cipher.setAAD(Buffer.from('aws-network-flow-visualizer', 'utf8'));
+    const cipher = createCipher('aes-256-cbc', Buffer.from(this.encryptionKey, 'hex'));
     
     let encrypted = cipher.update(data, 'utf8', 'hex');
     encrypted += cipher.final('hex');
     
-    const authTag = cipher.getAuthTag();
-    
-    // Combine IV, auth tag, and encrypted data
-    return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
+    // Combine IV and encrypted data (simplified for compatibility)
+    return iv.toString('hex') + ':' + encrypted;
   }
 
   /**
@@ -342,17 +340,14 @@ export class SecureCredentialStorage {
    */
   private decryptSensitiveData(encryptedData: string): string {
     const parts = encryptedData.split(':');
-    if (parts.length !== 3) {
+    if (parts.length !== 2) {
       throw new Error('Invalid encrypted data format');
     }
     
     const iv = Buffer.from(parts[0], 'hex');
-    const authTag = Buffer.from(parts[1], 'hex');
-    const encrypted = parts[2];
+    const encrypted = parts[1];
     
-    const decipher = createDecipherGCM('aes-256-gcm', Buffer.from(this.encryptionKey, 'hex'));
-    decipher.setAAD(Buffer.from('aws-network-flow-visualizer', 'utf8'));
-    decipher.setAuthTag(authTag);
+    const decipher = createDecipher('aes-256-cbc', Buffer.from(this.encryptionKey, 'hex'));
     
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');

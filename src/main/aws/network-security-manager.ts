@@ -411,4 +411,22 @@ export class NetworkSecurityManager {
       console.warn('Failed to cleanup old logs:', error);
     }
   }
+
+  /**
+   * Perform secure cleanup of network logs and sensitive data
+   */
+  async performSecureCleanup(): Promise<void> {
+    try {
+      // Clear in-memory logs
+      this.requestLogs = [];
+      
+      // Clean up old log files
+      await this.cleanupOldLogs();
+      
+      // Clear certificate pins if needed
+      // this.certificatePins.clear(); // Uncomment if you want to clear pins on cleanup
+    } catch (error) {
+      console.warn('Failed to perform secure cleanup:', error);
+    }
+  }
 }

@@ -1,9 +1,10 @@
 import { BrowserWindow, shell } from 'electron';
 import { randomBytes, createHash } from 'crypto';
-import { SSOOIDCClient, CreateTokenCommand, RegisterClientCommand } from '@aws-sdk/client-sso-oidc';
-import { SSOClient, GetRoleCredentialsCommand, ListAccountRolesCommand } from '@aws-sdk/client-sso';
+import { SSOOIDCClient, CreateTokenCommand, RegisterClientCommand, StartDeviceAuthorizationCommand } from '@aws-sdk/client-sso-oidc';
+import { SSOClient, GetRoleCredentialsCommand, ListAccountRolesCommand, ListAccountsCommand } from '@aws-sdk/client-sso';
 import { fromSSO } from '@aws-sdk/credential-providers';
 import { CredentialProvider } from '@aws-sdk/types';
+import { SSOConfig } from '../../shared/types';
 
 export interface SSOAuthConfig {
   startUrl: string;
@@ -37,6 +38,266 @@ export interface SSOAuthResult {
   tokens?: SSOTokens;
   accounts?: SSOAccount[];
   error?: string;
+  pending?: boolean;
+  expired?: boolean;
+  deviceCode?: string;
+  userCode?: string;
+  verificationUri?: string;
+  verificationUriComplete?: string;
+  expiresIn?: number;
+  interval?: number;
+  accessToken?: string;
+  credentials?: any;
+  roles?: SSORole[];
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+/**
+ * AWS SSO Authentication Service
+ * Handles SSO login and token management for tests
+ */
+export class SSOAuth {
+  private ssoOidcClient: SSOOIDCClient;
+  private ssoClient: SSOClient;
+  private currentTokens: SSOTokens | null = null;
+  private authWindow: BrowserWindow | null = null;
+
+  constructor(config?: SSOAuthConfig) {
+    const defaultConfig = config || { startUrl: '', region: 'us-east-1' };
+    this.ssoOidcClient = new SSOOIDCClient({ region: defaultConfig.region });
+    this.ssoClient = new SSOClient({ region: defaultConfig.region });
+  }
+
+  /**
+   * Validate SSO configuration
+   */
+  validateConfig(config: SSOConfig): ValidationResult {
+    const errors: string[] = [];
+    
+    if (!config.startUrl || !config.startUrl.startsWith('https://')) {
+      errors.push('SSO start URL must use HTTPS');
+    }
+    if (!config.region || !config.region.match(/^[a-z0-9-]+$/)) {
+      errors.push('Invalid AWS region');
+    }
+    if (config.accountId && !config.accountId.match(/^\d{12}$/)) {
+      errors.push('Invalid AWS account ID format');
+    }
+    
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
+   * Start device authorization flow
+   */
+  async startDeviceAuthorization(config: SSOConfig): Promise<SSOAuthResult> {
+    try {
+      const command = new StartDeviceAuthorizationCommand({
+        clientId: config.clientId || 'aws-network-flow-visualizer',
+        clientSecret: config.clientSecret,
+        startUrl: config.startUrl,
+      });
+
+      const response = await this.ssoOidcClient.send(command);
+      
+      return {
+        success: true,
+        deviceCode: response.deviceCode!,
+        userCode: response.userCode!,
+        verificationUri: response.verificationUri!,
+        verificationUriComplete: response.verificationUriComplete,
+        expiresIn: response.expiresIn!,
+        interval: response.interval || 5,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Failed to start device authorization: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
+
+  /**
+   * Poll for authentication token
+   */
+  async pollForToken(deviceCode: string, clientId: string, clientSecret: string): Promise<SSOAuthResult> {
+    try {
+      const command = new CreateTokenCommand({
+        clientId,
+        clientSecret,
+        grantType: 'urn:ietf:params:oauth:grant-type:device_code',
+        deviceCode
+      });
+
+      const response = await this.ssoOidcClient.send(command);
+      
+      return {
+        success: true,
+        accessToken: response.accessToken!,
+        expiresIn: response.expiresIn!
+      };
+      
+    } catch (error: any) {
+      if (error.name === 'AuthorizationPendingException') {
+        return {
+          success: false,
+          pending: true
+        };
+      } else if (error.name === 'ExpiredTokenException') {
+        return {
+          success: false,
+          expired: true
+        };
+      } else {
+        return {
+          success: false,
+          error: error.message || 'Token polling failed'
+        };
+      }
+    }
+  }
+
+  /**
+   * Get role credentials
+   */
+  async getRoleCredentials(accessToken: string, accountId: string, roleName: string): Promise<SSOAuthResult> {
+    try {
+      const command = new GetRoleCredentialsCommand({
+        accessToken,
+        accountId,
+        roleName
+      });
+
+      const response = await this.ssoClient.send(command);
+      
+      return {
+        success: true,
+        credentials: {
+          accessKeyId: response.roleCredentials?.accessKeyId,
+          secretAccessKey: response.roleCredentials?.secretAccessKey,
+          sessionToken: response.roleCredentials?.sessionToken,
+          expiration: response.roleCredentials?.expiration
+        }
+      };
+      
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to get role credentials'
+      };
+    }
+  }
+
+  /**
+   * List available accounts
+   */
+  async listAccounts(accessToken: string): Promise<SSOAuthResult> {
+    try {
+      const command = new ListAccountsCommand({
+        accessToken
+      });
+
+      const response = await this.ssoClient.send(command);
+      
+      const accounts = (response.accountList || []).map(account => ({
+        accountId: account.accountId!,
+        accountName: account.accountName!,
+        emailAddress: account.emailAddress!
+      }));
+
+      return {
+        success: true,
+        accounts
+      };
+      
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to list accounts'
+      };
+    }
+  }
+
+  /**
+   * List account roles
+   */
+  async listAccountRoles(accessToken: string, accountId: string): Promise<SSOAuthResult> {
+    try {
+      const command = new ListAccountRolesCommand({
+        accessToken,
+        accountId
+      });
+
+      const response = await this.ssoClient.send(command);
+      
+      const roles = (response.roleList || []).map(role => ({
+        roleName: role.roleName!,
+        accountId
+      }));
+
+      return {
+        success: true,
+        roles
+      };
+      
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to list account roles'
+      };
+    }
+  }
+
+  /**
+   * Check if token is expired
+   */
+  isTokenExpired(token: { expiresAt: Date }, bufferMs: number = 0): boolean {
+    return token.expiresAt.getTime() <= Date.now() + bufferMs;
+  }
+
+  /**
+   * Calculate token expiration
+   */
+  calculateTokenExpiration(expiresIn: number): Date {
+    return new Date(Date.now() + expiresIn * 1000);
+  }
+
+  /**
+   * Logout and clear tokens
+   */
+  async logout(accessToken?: string): Promise<SSOAuthResult> {
+    try {
+      this.currentTokens = null;
+      this.closeAuthWindow();
+      
+      return {
+        success: true
+      };
+      
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Logout failed'
+      };
+    }
+  }
+
+  /**
+   * Close authentication window
+   */
+  private closeAuthWindow(): void {
+    if (this.authWindow && !this.authWindow.isDestroyed()) {
+      this.authWindow.close();
+      this.authWindow = null;
+    }
+  }
 }
 
 /**
@@ -143,8 +404,6 @@ export class SSOAuthService {
     clientSecret: string,
     pkceParams: { codeChallenge: string; codeChallengeMethod: string }
   ) {
-    const { StartDeviceAuthorizationCommand } = await import('@aws-sdk/client-sso-oidc');
-    
     const command = new StartDeviceAuthorizationCommand({
       clientId,
       clientSecret,
@@ -292,8 +551,6 @@ export class SSOAuthService {
     if (!this.currentTokens) {
       throw new Error('Not authenticated');
     }
-
-    const { ListAccountsCommand } = await import('@aws-sdk/client-sso');
     
     const command = new ListAccountsCommand({
       accessToken: this.currentTokens.accessToken
