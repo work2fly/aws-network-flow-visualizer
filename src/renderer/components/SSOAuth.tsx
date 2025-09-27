@@ -192,8 +192,8 @@ export const SSOAuth: React.FC<SSOAuthProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white rounded-lg shadow-md">
+      <div className="flex items-center justify-between p-6 border-b border-gray-200">
         <h2 className="text-xl font-semibold text-gray-900">AWS SSO Authentication</h2>
         <div className="flex items-center space-x-2">
           <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
@@ -201,7 +201,8 @@ export const SSOAuth: React.FC<SSOAuthProps> = ({
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="max-h-96 overflow-y-auto p-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="startUrl" className="flex items-center text-sm font-medium text-gray-700 mb-1">
             SSO Start URL *
@@ -354,15 +355,16 @@ export const SSOAuth: React.FC<SSOAuthProps> = ({
         >
           Sign In with AWS SSO
         </LoadingButton>
-      </form>
+        </form>
 
-      <div className="mt-6 text-xs text-gray-500">
-        <p className="mb-2">
-          <strong>Note:</strong> This will open a browser window for AWS SSO authentication.
-        </p>
-        <p>
-          Your credentials are stored securely and encrypted locally. No data is sent to external servers.
-        </p>
+        <div className="mt-6 text-xs text-gray-500">
+          <p className="mb-2">
+            <strong>Note:</strong> This will open a browser window for AWS SSO authentication.
+          </p>
+          <p>
+            Your credentials are stored securely and encrypted locally. No data is sent to external servers.
+          </p>
+        </div>
       </div>
     </div>
   );

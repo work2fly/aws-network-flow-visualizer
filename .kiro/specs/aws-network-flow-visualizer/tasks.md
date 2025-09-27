@@ -281,6 +281,28 @@ The AWS Network Flow Visualizer Electron application is now functional with:
   - Add user feedback and error reporting mechanisms
   - _Requirements: 2.4, 7.5_
 
+- [ ] 16. Fix UI/UX Issues and Remove Mock Functionality
+- [ ] 16.1 Fix authentication form scrolling and layout issues
+  - Fix Advanced options visibility in SSO and Profile authentication forms
+  - Add proper scrolling or modal dialogs for advanced options
+  - Ensure all form fields are accessible and properly sized
+  - Test responsive layout on different screen sizes
+  - _Requirements: 3.1, 3.2_
+
+- [ ] 16.2 Review and replace all mock/demo functionality
+  - Audit all components for dummy, demo, or mocked functionality
+  - Replace mock data with real API calls and proper error handling
+  - Remove placeholder components and implement proper functionality
+  - Ensure all buttons, forms, and interactions work as intended
+  - _Requirements: 3.1, 3.2, 3.3_
+
+- [ ] 16.3 Improve authentication user experience
+  - Add proper loading states and progress indicators
+  - Implement better error messages and user feedback
+  - Add validation for authentication forms
+  - Ensure smooth transitions between authentication states
+  - _Requirements: 3.1, 8.1, 8.2_
+
 ## Development Commands
 
 ### Current Working Commands
