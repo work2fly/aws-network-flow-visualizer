@@ -27,6 +27,7 @@ import {
 import { loadSavedFiltersFromStorage } from './store/slices/filterSlice';
 import { ErrorBoundary, ToastContainer } from './components/common';
 import { useErrorHandler } from './hooks/useErrorHandler';
+import { DebugPanel } from './components/DebugPanel';
 
 const App: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -173,6 +174,7 @@ const App: React.FC = () => {
               operationStatus={operationStatus}
             />
             <ToastContainer />
+            <DebugPanel />
           </FilteredTopologyProvider>
         </QueryEngineProvider>
       </AuthenticationProvider>
