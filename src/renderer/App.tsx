@@ -6,6 +6,7 @@ import {
   TimelineView, 
   AuthenticationView 
 } from './components/views';
+import { AuthenticationContainer } from './components/AuthenticationContainer';
 import { 
   AuthenticationProvider,
   FilteredTopologyProvider,
@@ -64,7 +65,7 @@ const App: React.FC = () => {
             id: 'auth',
             label: 'Authentication',
             icon: '🔐',
-            component: AuthenticationView,
+            component: AuthenticationContainer,
           },
           {
             id: 'topology',
