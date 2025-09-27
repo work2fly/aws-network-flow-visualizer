@@ -42,6 +42,21 @@ declare global {
         buildTopology: (flowLogs: any[]) => Promise<any>;
         analyzeTrafficPatterns: (params: any) => Promise<any>;
       };
+      
+      // Data anonymization methods
+      anonymizeData: (data: any, options?: any) => Promise<any>;
+      anonymizeFlowLogs: (flowLogs: any[], options?: any) => Promise<any[]>;
+      anonymizeTopology: (topology: any, options?: any) => Promise<any>;
+
+      // Network security methods
+      networkSecurity: {
+        getRequestLogs: (options?: any) => Promise<any[]>;
+        clearRequestLogs: () => Promise<void>;
+        exportRequestLogs: (format: 'json' | 'csv') => Promise<string>;
+        getCertificatePins: () => Promise<any[]>;
+        addCertificatePin: (config: any) => Promise<void>;
+        removeCertificatePin: (hostname: string) => Promise<void>;
+      };
     };
   }
 }
