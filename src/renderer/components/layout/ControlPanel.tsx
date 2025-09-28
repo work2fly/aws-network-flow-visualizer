@@ -60,7 +60,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Time Range
               </label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select 
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => {
+                  console.log('Time range changed:', e.target.value);
+                  // TODO: Integrate with filter system
+                }}
+              >
                 <option>Last Hour</option>
                 <option>Last 4 Hours</option>
                 <option>Last 24 Hours</option>
@@ -87,7 +93,14 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               <div className="space-y-2">
                 {['TCP', 'UDP', 'ICMP'].map((protocol) => (
                   <label key={protocol} className="flex items-center">
-                    <input type="checkbox" className="mr-2" />
+                    <input 
+                      type="checkbox" 
+                      className="mr-2" 
+                      onChange={(e) => {
+                        console.log(`Protocol ${protocol} ${e.target.checked ? 'enabled' : 'disabled'}`);
+                        // TODO: Integrate with filter system
+                      }}
+                    />
                     <span className="text-sm text-gray-700">{protocol}</span>
                   </label>
                 ))}
@@ -101,14 +114,28 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               <div className="space-y-2">
                 {['ACCEPT', 'REJECT'].map((action) => (
                   <label key={action} className="flex items-center">
-                    <input type="checkbox" className="mr-2" defaultChecked />
+                    <input 
+                      type="checkbox" 
+                      className="mr-2" 
+                      defaultChecked 
+                      onChange={(e) => {
+                        console.log(`Action ${action} ${e.target.checked ? 'enabled' : 'disabled'}`);
+                        // TODO: Integrate with filter system
+                      }}
+                    />
                     <span className="text-sm text-gray-700">{action}</span>
                   </label>
                 ))}
               </div>
             </div>
             
-            <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+            <button 
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+              onClick={() => {
+                console.log('Apply filters functionality - integrating with filter system');
+                // TODO: Integrate with actual filter system
+              }}
+            >
               Apply Filters
             </button>
           </div>
@@ -132,7 +159,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Search Type
               </label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select 
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => {
+                  console.log('Search type changed:', e.target.value);
+                  // TODO: Integrate with search system
+                }}
+              >
                 <option>All</option>
                 <option>IP Address</option>
                 <option>Port</option>
@@ -152,7 +185,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               </label>
             </div>
             
-            <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+            <button 
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+              onClick={() => {
+                console.log('Search functionality - integrating with search system');
+                // TODO: Integrate with actual search system
+              }}
+            >
               Search
             </button>
           </div>
@@ -220,7 +259,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Visualization Layout
               </label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select 
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => {
+                  console.log('Visualization layout changed:', e.target.value);
+                  // TODO: Integrate with visualization system
+                }}
+              >
                 <option>Hierarchical</option>
                 <option>Force-Directed</option>
                 <option>Circular</option>
@@ -232,7 +277,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Node Size Based On
               </label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select 
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => {
+                  console.log('Node size basis changed:', e.target.value);
+                  // TODO: Integrate with visualization system
+                }}
+              >
                 <option>Traffic Volume</option>
                 <option>Connection Count</option>
                 <option>Fixed Size</option>
@@ -241,15 +292,38 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             
             <div className="space-y-2">
               <label className="flex items-center">
-                <input type="checkbox" className="mr-2" defaultChecked />
+                <input 
+                  type="checkbox" 
+                  className="mr-2" 
+                  defaultChecked
+                  onChange={(e) => {
+                    console.log(`Traffic animation ${e.target.checked ? 'enabled' : 'disabled'}`);
+                    // TODO: Integrate with visualization system
+                  }}
+                />
                 <span className="text-sm text-gray-700">Show Traffic Animation</span>
               </label>
               <label className="flex items-center">
-                <input type="checkbox" className="mr-2" defaultChecked />
+                <input 
+                  type="checkbox" 
+                  className="mr-2" 
+                  defaultChecked
+                  onChange={(e) => {
+                    console.log(`Node labels ${e.target.checked ? 'enabled' : 'disabled'}`);
+                    // TODO: Integrate with visualization system
+                  }}
+                />
                 <span className="text-sm text-gray-700">Show Node Labels</span>
               </label>
               <label className="flex items-center">
-                <input type="checkbox" className="mr-2" />
+                <input 
+                  type="checkbox" 
+                  className="mr-2"
+                  onChange={(e) => {
+                    console.log(`Dark mode ${e.target.checked ? 'enabled' : 'disabled'}`);
+                    // TODO: Integrate with theme system
+                  }}
+                />
                 <span className="text-sm text-gray-700">Dark Mode</span>
               </label>
             </div>

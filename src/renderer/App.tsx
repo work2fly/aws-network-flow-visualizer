@@ -3,8 +3,7 @@ import { MainLayout, Tab } from './components/layout';
 import { 
   TopologyView, 
   FlowAnalysisView, 
-  TimelineView, 
-  AuthenticationView 
+  TimelineView
 } from './components/views';
 import { AuthenticationContainer } from './components/AuthenticationContainer';
 import { 
