@@ -9,16 +9,30 @@ export interface SidebarProps {
     accountId?: string;
     error?: string;
   };
+  activeTabId: string;
+  onTabChange: (tabId: string) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   collapsed,
   onToggleCollapse,
   connectionStatus,
+  activeTabId,
+  onTabChange,
 }) => {
   const sidebarWidth = collapsed ? 'w-16' : 'w-64';
 
+  // Map sidebar navigation to actual tab IDs
   const navigationItems = [
+    {
+      id: 'authentication',
+      label: 'Authentication',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+      ),
+    },
     {
       id: 'topology',
       label: 'Network Topology',
@@ -27,47 +41,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
         </svg>
       ),
-      active: true,
     },
     {
-      id: 'flows',
+      id: 'flow-analysis',
       label: 'Flow Analysis',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
       ),
-      active: false,
-    },
-    {
-      id: 'filters',
-      label: 'Filters & Search',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z" />
-        </svg>
-      ),
-      active: false,
     },
     {
       id: 'timeline',
-      label: 'Timeline View',
+      label: 'Timeline',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
-      active: false,
-    },
-    {
-      id: 'export',
-      label: 'Export & Reports',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
-      active: false,
     },
   ];
 
@@ -102,9 +93,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {navigationItems.map((item) => (
             <li key={item.id}>
               <button
+                onClick={() => onTabChange(item.id)}
                 className={`
                   w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
-                  ${item.active
+                  ${activeTabId === item.id
                     ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
                     : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                   }

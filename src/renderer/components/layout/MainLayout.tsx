@@ -61,6 +61,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
           collapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           connectionStatus={connectionStatus}
+          activeTabId={activeTabId}
+          onTabChange={onTabChange}
         />
 
         {/* Main Canvas Area */}
