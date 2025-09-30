@@ -189,8 +189,8 @@ export const ProfileSelector: React.FC<ProfileSelectorProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white rounded-lg shadow-md">
+      <div className="flex items-center justify-between p-6 border-b border-gray-200">
         <h2 className="text-xl font-semibold text-gray-900">AWS Profile Authentication</h2>
         <button
           onClick={loadProfiles}
@@ -200,6 +200,8 @@ export const ProfileSelector: React.FC<ProfileSelectorProps> = ({
           Refresh Profiles
         </button>
       </div>
+
+      <div className="max-h-96 overflow-y-auto p-6">
 
       {profiles.length === 0 ? (
         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
@@ -409,13 +411,14 @@ export const ProfileSelector: React.FC<ProfileSelectorProps> = ({
         </form>
       )}
 
-      <div className="mt-6 text-xs text-gray-500">
-        <p className="mb-2">
-          <strong>Note:</strong> Profiles are read from your AWS CLI configuration (~/.aws/config and ~/.aws/credentials).
-        </p>
-        <p>
-          Your credentials are handled securely and never transmitted to external servers.
-        </p>
+        <div className="mt-6 text-xs text-gray-500">
+          <p className="mb-2">
+            <strong>Note:</strong> Profiles are read from your AWS CLI configuration (~/.aws/config and ~/.aws/credentials).
+          </p>
+          <p>
+            Your credentials are handled securely and never transmitted to external servers.
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -1,16 +1,5 @@
 import { NetworkTopology, FlowLogRecord, FlowFilters } from '@shared/types';
 
-// Import anonymization functionality from main process
-declare global {
-  interface Window {
-    electronAPI: {
-      anonymizeData: (data: any, options?: any) => Promise<any>;
-      anonymizeFlowLogs: (flowLogs: FlowLogRecord[], options?: any) => Promise<FlowLogRecord[]>;
-      anonymizeTopology: (topology: NetworkTopology, options?: any) => Promise<NetworkTopology>;
-    };
-  }
-}
-
 export interface ExportOptions {
   format: 'png' | 'svg' | 'csv' | 'json';
   filename?: string;

@@ -6,11 +6,13 @@ export interface MainCanvasProps {
 
 export const MainCanvas: React.FC<MainCanvasProps> = ({ children }) => {
   return (
-    <div className="flex-1 bg-gray-50 overflow-hidden">
+    <div className="flex-1 bg-gray-50 overflow-auto">
       <div className="h-full flex flex-col">
         {/* Canvas Content */}
-        <div className="flex-1 relative">
-          {children}
+        <div className="flex-1 relative p-4">
+          <div className="max-w-4xl mx-auto">
+            {children}
+          </div>
         </div>
       </div>
     </div>

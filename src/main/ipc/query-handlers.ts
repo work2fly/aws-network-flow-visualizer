@@ -3,6 +3,7 @@ import { FlowLogQueryEngine } from '../aws/flow-log-query-engine';
 import { AWSCredentialManager } from '../aws/credential-manager';
 import { VPCFlowLogFilters, TGWFlowLogFilters, QueryExecutionResult } from '../../shared/types';
 import { getNetworkSecurityManager } from './security-handlers';
+import { runIntegrationTests } from '../aws/integration-test';
 
 // Create a shared credential manager instance
 const credentialManager = new AWSCredentialManager();
@@ -276,6 +277,28 @@ export function registerQueryHandlers() {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to cancel query'
+      };
+    }
+  });
+
+  // Run AWS integration tests
+  ipcMain.handle('aws:run-integration-tests', async (
+    event,
+    includeRealCredentials = false
+  ): Promise<{ success: boolean; results?: any[]; report?: string; error?: string }> => {
+    try {
+      const { results, report } = await runIntegrationTests(includeRealCredentials);
+      
+      return {
+        success: true,
+        results,
+        report
+      };
+    } catch (error) {
+      console.error('Integration tests failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Integration tests failed'
       };
     }
   });
