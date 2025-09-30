@@ -2,7 +2,7 @@ const path = require('path');
 
 module.exports = {
   entry: {
-    main: './src/main/main.ts',
+    main: './src/main/main.simple.ts',
     preload: './src/main/preload.ts',
   },
   target: 'electron-main',
@@ -39,11 +39,5 @@ module.exports = {
   },
   externals: {
     'electron': 'commonjs electron',
-    'keytar': 'commonjs keytar',
-    // AWS SDK native dependencies
-    '@aws-sdk/client-cloudwatch-logs': 'commonjs @aws-sdk/client-cloudwatch-logs',
-    '@aws-sdk/client-sso-oidc': 'commonjs @aws-sdk/client-sso-oidc',
-    '@aws-sdk/client-sts': 'commonjs @aws-sdk/client-sts',
-    '@aws-sdk/credential-providers': 'commonjs @aws-sdk/credential-providers',
   },
 };

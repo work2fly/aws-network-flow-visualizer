@@ -37,6 +37,9 @@ declare global {
         // Flow log queries
         queryVPCFlowLogs: (params: any) => Promise<any>;
         queryTGWFlowLogs: (params: any) => Promise<any>;
+        
+        // Integration testing
+        runIntegrationTests: (includeRealCredentials?: boolean) => Promise<{ success: boolean; results?: any[]; report?: string; error?: string }>;
       };
       network: {
         buildTopology: (flowLogs: any[]) => Promise<any>;

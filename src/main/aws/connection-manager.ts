@@ -241,4 +241,11 @@ export class AWSConnectionManager implements AWSConnectionManagerInterface {
     };
     return await this.credentialManager.authenticateWithRole(roleConfig);
   }
+
+  /**
+   * Get the credential manager instance
+   */
+  getCredentialManager(): AWSCredentialManager {
+    return this.credentialManager;
+  }
 }

@@ -44,6 +44,41 @@ export const DebugPanel: React.FC = () => {
     }
   };
 
+  const runIntegrationTests = async () => {
+    try {
+      addResult(`🔄 Running AWS integration tests...`);
+      const result = await window.electronAPI.aws.runIntegrationTests(false);
+      if (result.success) {
+        const passed = result.results?.filter(r => r.success).length || 0;
+        const total = result.results?.length || 0;
+        addResult(`✅ Integration tests: ${passed}/${total} passed`);
+      } else {
+        addResult(`❌ Integration tests failed: ${result.error}`);
+      }
+    } catch (error) {
+      addResult(`❌ Integration tests error: ${error}`);
+    }
+  };
+
+  const runRealCredentialTests = async () => {
+    try {
+      addResult(`🔄 Running real credential tests...`);
+      const result = await window.electronAPI.aws.runIntegrationTests(true);
+      if (result.success) {
+        const passed = result.results?.filter(r => r.success).length || 0;
+        const total = result.results?.length || 0;
+        addResult(`✅ Real credential tests: ${passed}/${total} passed`);
+        if (result.report) {
+          console.log('Integration Test Report:', result.report);
+        }
+      } else {
+        addResult(`❌ Real credential tests failed: ${result.error}`);
+      }
+    } catch (error) {
+      addResult(`❌ Real credential tests error: ${error}`);
+    }
+  };
+
   const clearResults = () => {
     setTestResults([]);
   };
@@ -96,6 +131,8 @@ export const DebugPanel: React.FC = () => {
         <button onClick={testAWSConfig} style={{ padding: '4px 8px', fontSize: '11px' }}>Test AWS Config</button>
         <button onClick={testSSOInitialize} style={{ padding: '4px 8px', fontSize: '11px' }}>Test SSO Init</button>
         <button onClick={testAWSProfiles} style={{ padding: '4px 8px', fontSize: '11px' }}>Test Profiles</button>
+        <button onClick={runIntegrationTests} style={{ padding: '4px 8px', fontSize: '11px' }}>Integration Tests</button>
+        <button onClick={runRealCredentialTests} style={{ padding: '4px 8px', fontSize: '11px' }}>Real Creds Test</button>
         <button onClick={clearResults} style={{ padding: '4px 8px', fontSize: '11px' }}>Clear</button>
       </div>
 

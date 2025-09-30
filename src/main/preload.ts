@@ -42,6 +42,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Flow log queries
     queryVPCFlowLogs: (params: any) => ipcRenderer.invoke('aws:query-vpc-flow-logs', params),
     queryTGWFlowLogs: (params: any) => ipcRenderer.invoke('aws:query-tgw-flow-logs', params),
+    
+    // Integration testing
+    runIntegrationTests: (includeRealCredentials?: boolean) => ipcRenderer.invoke('aws:run-integration-tests', includeRealCredentials),
   },
 
   // Network topology and analysis methods
